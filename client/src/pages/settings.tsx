@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,11 +31,14 @@ import {
   ExternalLink,
   IndianRupee,
   ShieldCheck,
+  User,
+  Lock,
 } from "lucide-react";
 import type { Service } from "@shared/schema";
 import logoPath from "@assets/logo.png";
 
 const TABS = [
+  { key: "profile", label: "My Profile", icon: User },
   { key: "general", label: "General", icon: Settings2 },
   { key: "logo", label: "Logo", icon: Image },
   { key: "colors", label: "Colors", icon: Palette },
@@ -47,7 +50,7 @@ const TABS = [
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -73,24 +76,31 @@ export default function SettingsPage() {
 
       <div className="flex gap-6">
         <div className="w-48 shrink-0 space-y-1" data-testid="settings-tabs">
-          {availableTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              data-testid={`tab-${tab.key}`}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${
-                activeTab === tab.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
+          {availableTabs.map((tab) => {
+            // Non-admins can only see "My Profile" tab! Restrict settings to admins/managers.
+            const isRestrictedSetting = ["general", "logo", "colors", "contact", "order", "services", "social", "others", "employees"].includes(tab.key);
+            if (isRestrictedSetting && user?.role === "staff") return null;
+
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                data-testid={`tab-${tab.key}`}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${
+                  activeTab === tab.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex-1 min-w-0">
+          {activeTab === "profile" && <ProfileTab />}
           {activeTab === "general" && <GeneralTab settings={settingsMap} />}
           {activeTab === "logo" && <LogoTab />}
           {activeTab === "colors" && <ColorsTab settings={settingsMap} />}
@@ -929,5 +939,180 @@ function EmployeesTab() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ProfileTab() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [fullName, setFullName] = useState(user?.fullName || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [department, setDepartment] = useState(user?.department || "");
+  const [designation, setDesignation] = useState(user?.designation || "");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [skills, setSkills] = useState(user?.skills || "");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", "/api/auth/profile", data);
+      return res.json();
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["/api/auth/user"], updated);
+      toast({ title: "Profile updated successfully!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/auth/change-password", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast({ title: "Password changed successfully!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to change password", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const handleProfileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfileMutation.mutate({ fullName, email, phone, department, designation, bio, skills });
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords do not match", description: "Please make sure your new passwords are identical.", variant: "destructive" });
+      return;
+    }
+    changePasswordMutation.mutate({ currentPassword, newPassword });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Side: Profile Details form */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">My Profile</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleProfileSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-username">Username</Label>
+                    <Input id="prof-username" value={user?.username} disabled className="bg-muted opacity-80" />
+                    <p className="text-[10px] text-muted-foreground">Username cannot be changed</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-role">Account Role</Label>
+                    <Input id="prof-role" value={user?.role?.toUpperCase()} disabled className="bg-muted opacity-80" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-fullname">Full Name</Label>
+                    <Input id="prof-fullname" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="anshu" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-email">Email Address</Label>
+                    <Input id="prof-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="anshu@canvascartel.in" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-phone">Phone Number</Label>
+                    <Input id="prof-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-dept">Department</Label>
+                    <Input id="prof-dept" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Design / Dev" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prof-desig">Designation</Label>
+                    <Input id="prof-desig" value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. Lead Developer" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="prof-skills">Skills & Expertise</Label>
+                  <Input id="prof-skills" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g. React, Node.js, Branding (comma separated)" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="prof-bio">Bio / Professional Summary</Label>
+                  <textarea id="prof-bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Write a short summary about yourself..." className="w-full min-h-24 px-3 py-2 border rounded-md text-sm bg-background" />
+                </div>
+
+                <Button type="submit" disabled={updateProfileMutation.isPending} className="bg-[#EE2B2B] hover:bg-[#c92222] text-white">
+                  <Save className="w-4 h-4 mr-2" />
+                  Update Profile Details
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Side: Change Password & Details Summary */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Lock className="w-4 h-4 text-[#EE2B2B]" />
+                Change Password
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pass-current">Current Password</Label>
+                  <Input id="pass-current" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pass-new">New Password</Label>
+                  <Input id="pass-new" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pass-confirm">Confirm New Password</Label>
+                  <Input id="pass-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                </div>
+                <Button type="submit" disabled={changePasswordMutation.isPending} className="w-full">
+                  Change Password
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/10 border-dashed">
+            <CardContent className="p-4 space-y-3">
+              <p className="font-semibold text-sm">Professional Summary</p>
+              <div className="text-xs space-y-1 text-muted-foreground">
+                <p>💼 <span className="font-medium text-foreground">Joined At:</span> {user?.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+                <p>📍 <span className="font-medium text-foreground">Department:</span> {user?.department || "Unassigned"}</p>
+                <p>🎖️ <span className="font-medium text-foreground">Role:</span> {user?.role?.toUpperCase()}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

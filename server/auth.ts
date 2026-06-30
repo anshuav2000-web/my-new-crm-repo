@@ -158,6 +158,100 @@ export function setupAuth(app: Express) {
     return res.json(req.user);
   });
 
+  // ========== USER PROFILE & SETTINGS ENDPOINTS ==========
+
+  // Update profile details
+  app.patch("/api/auth/profile", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      const { fullName, email, phone, department, designation, bio, skills } = req.body;
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          fullName: fullName !== undefined ? fullName : undefined,
+          email: email !== undefined ? email : undefined,
+          phone: phone !== undefined ? phone : undefined,
+          department: department !== undefined ? department : undefined,
+          designation: designation !== undefined ? designation : undefined,
+          bio: bio !== undefined ? bio : undefined,
+          skills: skills !== undefined ? skills : undefined,
+        })
+        .where(eq(users.id, currentUser.id))
+        .returning();
+
+      // Broadcast update to sync user state across tabs
+      broadcastEvent("users", "update", updatedUser);
+
+      res.json(updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Change password securely
+  app.post("/api/auth/change-password", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Both current and new passwords are required." });
+      }
+
+      // Verify current password
+      const [user] = await db.select().from(users).where(eq(users.id, currentUser.id));
+      const isCorrect = await comparePasswords(currentPassword, user.password);
+      if (!isCorrect) {
+        return res.status(400).json({ message: "Incorrect current password." });
+      }
+
+      const newHashed = await hashPassword(newPassword);
+      await db.update(users).set({ password: newHashed }).where(eq(users.id, currentUser.id));
+
+      res.json({ success: true, message: "Password updated successfully." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Forgot Password / Password Recovery Handler
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { username, email } = req.body;
+      if (!username && !email) {
+        return res.status(400).json({ message: "Please provide your username or email address." });
+      }
+
+      // Find user by username or email
+      let userRecord;
+      if (username) {
+        const [u] = await db.select().from(users).where(eq(users.username, username));
+        userRecord = u;
+      } else {
+        const [u] = await db.select().from(users).where(eq(users.email, email));
+        userRecord = u;
+      }
+
+      if (!userRecord) {
+        return res.status(404).json({ message: "No user found with the provided details." });
+      }
+
+      // Reset to standard temporary recovery password
+      const tempPass = "CanvasRecover2026!";
+      const hashedTemp = await hashPassword(tempPass);
+      await db.update(users).set({ password: hashedTemp }).where(eq(users.id, userRecord.id));
+
+      return res.json({
+        success: true,
+        message: "Your password has been successfully reset! Since standard email setups are offline, here is your temporary login password:",
+        tempPassword: tempPass,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Admin: Get all users
   app.get("/api/admin/users", isAuthenticated, async (req: Request, res: Response) => {
     try {

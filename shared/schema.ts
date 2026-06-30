@@ -11,7 +11,13 @@ export const users = pgTable("users", {
   permissions: jsonb("permissions").default(sql`'{}'::jsonb`),
   fullName: text("full_name"),
   email: text("email"),
+  phone: text("phone"),
   avatar: text("avatar"),
+  department: text("department"),
+  designation: text("designation"),
+  bio: text("bio"),
+  skills: text("skills"),
+  joinedAt: timestamp("joined_at").defaultNow(),
 });
 
 export const leads = pgTable("leads", {

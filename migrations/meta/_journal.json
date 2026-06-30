@@ -15,6 +15,13 @@
       "when": 1782857159663,
       "tag": "0001_dusty_iron_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782861840684,
+      "tag": "0002_confused_silver_fox",
+      "breakpoints": true
     }
   ]
 }
