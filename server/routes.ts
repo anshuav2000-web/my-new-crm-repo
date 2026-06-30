@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { log } from "./index";
 import { Resend } from "resend";
+import { WebSocketServer, WebSocket } from "ws";
 
 // Resend integration - fetches credentials from Replit connector
 async function getResendClient() {
@@ -31,10 +32,57 @@ async function getResendClient() {
   };
 }
 
+let broadcastFn: ((entity: string, action: string, data?: any) => void) | null = null;
+
+export function broadcastEvent(entity: string, action: string, data?: any) {
+  if (broadcastFn) {
+    broadcastFn(entity, action, data);
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // Setup WebSocket Server for Real-Time Sync
+  const wss = new WebSocketServer({ noServer: true });
+  const clients = new Set<WebSocket>();
+
+  wss.on("connection", (ws) => {
+    clients.add(ws);
+    log(`WebSocket client connected. Total clients: ${clients.size}`, "websocket");
+
+    ws.on("close", () => {
+      clients.delete(ws);
+      log(`WebSocket client disconnected. Total clients: ${clients.size}`, "websocket");
+    });
+
+    ws.on("error", (err) => {
+      log(`WebSocket client error: ${err.message}`, "websocket");
+      clients.delete(ws);
+    });
+  });
+
+  httpServer.on("upgrade", (request, socket, head) => {
+    const url = new URL(request.url || "", `http://${request.headers.host}`);
+    if (url.pathname === "/ws") {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    }
+  });
+
+  function broadcast(entity: string, action: string, data?: any) {
+    const message = JSON.stringify({ entity, action, data });
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  broadcastFn = broadcast;
 
   // ========== LEADS ==========
   app.get("/api/leads", async (_req, res) => {
@@ -57,6 +105,8 @@ export async function registerRoutes(
         entityType: "lead",
         entityId: lead.id,
       });
+      broadcast("leads", "create", lead);
+      broadcast("activities", "create");
       res.status(201).json(lead);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -67,6 +117,7 @@ export async function registerRoutes(
     try {
       const lead = await storage.updateLead(req.params.id, req.body);
       if (!lead) return res.status(404).json({ message: "Lead not found" });
+      broadcast("leads", "update", lead);
       res.json(lead);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -75,6 +126,7 @@ export async function registerRoutes(
 
   app.delete("/api/leads/:id", async (req, res) => {
     await storage.deleteLead(req.params.id);
+    broadcast("leads", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -93,6 +145,8 @@ export async function registerRoutes(
         entityType: "contact",
         entityId: contact.id,
       });
+      broadcast("contacts", "create", contact);
+      broadcast("activities", "create");
       res.status(201).json(contact);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -103,6 +157,7 @@ export async function registerRoutes(
     try {
       const contact = await storage.updateContact(req.params.id, req.body);
       if (!contact) return res.status(404).json({ message: "Contact not found" });
+      broadcast("contacts", "update", contact);
       res.json(contact);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -111,6 +166,7 @@ export async function registerRoutes(
 
   app.delete("/api/contacts/:id", async (req, res) => {
     await storage.deleteContact(req.params.id);
+    broadcast("contacts", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -129,6 +185,8 @@ export async function registerRoutes(
         entityType: "deal",
         entityId: deal.id,
       });
+      broadcast("deals", "create", deal);
+      broadcast("activities", "create");
       res.status(201).json(deal);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -139,6 +197,7 @@ export async function registerRoutes(
     try {
       const deal = await storage.updateDeal(req.params.id, req.body);
       if (!deal) return res.status(404).json({ message: "Deal not found" });
+      broadcast("deals", "update", deal);
       res.json(deal);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -147,6 +206,7 @@ export async function registerRoutes(
 
   app.delete("/api/deals/:id", async (req, res) => {
     await storage.deleteDeal(req.params.id);
+    broadcast("deals", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -165,6 +225,8 @@ export async function registerRoutes(
         entityType: "call_log",
         entityId: cl.id,
       });
+      broadcast("call-logs", "create", cl);
+      broadcast("activities", "create");
       res.status(201).json(cl);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -175,6 +237,7 @@ export async function registerRoutes(
     try {
       const cl = await storage.updateCallLog(req.params.id, req.body);
       if (!cl) return res.status(404).json({ message: "Call log not found" });
+      broadcast("call-logs", "update", cl);
       res.json(cl);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -183,6 +246,7 @@ export async function registerRoutes(
 
   app.delete("/api/call-logs/:id", async (req, res) => {
     await storage.deleteCallLog(req.params.id);
+    broadcast("call-logs", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -195,6 +259,7 @@ export async function registerRoutes(
   app.post("/api/tasks", async (req, res) => {
     try {
       const task = await storage.createTask(req.body);
+      broadcast("tasks", "create", task);
       res.status(201).json(task);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -205,6 +270,7 @@ export async function registerRoutes(
     try {
       const task = await storage.updateTask(req.params.id, req.body);
       if (!task) return res.status(404).json({ message: "Task not found" });
+      broadcast("tasks", "update", task);
       res.json(task);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -213,6 +279,7 @@ export async function registerRoutes(
 
   app.delete("/api/tasks/:id", async (req, res) => {
     await storage.deleteTask(req.params.id);
+    broadcast("tasks", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -225,6 +292,7 @@ export async function registerRoutes(
   app.post("/api/webhooks", async (req, res) => {
     try {
       const wh = await storage.createWebhook(req.body);
+      broadcast("webhooks", "create", wh);
       res.status(201).json(wh);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -235,6 +303,7 @@ export async function registerRoutes(
     try {
       const wh = await storage.updateWebhook(req.params.id, req.body);
       if (!wh) return res.status(404).json({ message: "Webhook not found" });
+      broadcast("webhooks", "update", wh);
       res.json(wh);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -243,6 +312,7 @@ export async function registerRoutes(
 
   app.delete("/api/webhooks/:id", async (req, res) => {
     await storage.deleteWebhook(req.params.id);
+    broadcast("webhooks", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -296,6 +366,9 @@ export async function registerRoutes(
         entityType: "lead",
         entityId: lead.id,
       });
+
+      broadcast("leads", "create", lead);
+      broadcast("activities", "create");
 
       log(`n8n webhook received: Lead "${lead.name}" created via "${webhook.name}"`, "webhook");
 
@@ -372,6 +445,8 @@ export async function registerRoutes(
         entityId: lead.id,
       });
 
+      broadcast("activities", "create");
+
       log(`Lead "${lead.name}" sent to n8n webhook: ${url}`, "webhook");
       res.json({ success: true, message: "Lead sent to n8n webhook successfully" });
     } catch (err: any) {
@@ -412,7 +487,10 @@ export async function registerRoutes(
         entityId: invoice.id,
       });
       const createdItems = await storage.getInvoiceItems(invoice.id);
-      res.status(201).json({ ...invoice, items: createdItems });
+      const fullInvoice = { ...invoice, items: createdItems };
+      broadcast("invoices", "create", fullInvoice);
+      broadcast("activities", "create");
+      res.status(201).json(fullInvoice);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
@@ -430,7 +508,9 @@ export async function registerRoutes(
         }
       }
       const updatedItems = await storage.getInvoiceItems(invoice.id);
-      res.json({ ...invoice, items: updatedItems });
+      const fullInvoice = { ...invoice, items: updatedItems };
+      broadcast("invoices", "update", fullInvoice);
+      res.json(fullInvoice);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
@@ -438,6 +518,7 @@ export async function registerRoutes(
 
   app.delete("/api/invoices/:id", async (req, res) => {
     await storage.deleteInvoice(req.params.id);
+    broadcast("invoices", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -648,6 +729,9 @@ export async function registerRoutes(
         entityType: "payment",
         entityId: payment.id,
       });
+      broadcast("payments", "create", payment);
+      broadcast("invoices", "update", { id: payment.invoiceId });
+      broadcast("activities", "create");
       res.status(201).json(payment);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -665,6 +749,8 @@ export async function registerRoutes(
         const newStatus = totalPaid >= (invoice.total || 0) ? "paid" : totalPaid > 0 ? "partially_paid" : invoice.status;
         await storage.updateInvoice(payment.invoiceId, { amountPaid: totalPaid, status: newStatus } as any);
       }
+      broadcast("payments", "update", payment);
+      broadcast("invoices", "update", { id: payment.invoiceId });
       res.json(payment);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -682,6 +768,8 @@ export async function registerRoutes(
         const newStatus = totalPaid >= (invoice.total || 0) ? "paid" : totalPaid > 0 ? "partially_paid" : "sent";
         await storage.updateInvoice(payment.invoiceId, { amountPaid: totalPaid, status: newStatus } as any);
       }
+      broadcast("payments", "delete", { id: req.params.id });
+      broadcast("invoices", "update", { id: payment.invoiceId });
     }
     res.status(204).send();
   });
@@ -701,6 +789,8 @@ export async function registerRoutes(
         entityType: "expense",
         entityId: expense.id,
       });
+      broadcast("expenses", "create", expense);
+      broadcast("activities", "create");
       res.status(201).json(expense);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -711,6 +801,7 @@ export async function registerRoutes(
     try {
       const expense = await storage.updateExpense(req.params.id, req.body);
       if (!expense) return res.status(404).json({ message: "Expense not found" });
+      broadcast("expenses", "update", expense);
       res.json(expense);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -719,6 +810,7 @@ export async function registerRoutes(
 
   app.delete("/api/expenses/:id", async (req, res) => {
     await storage.deleteExpense(req.params.id);
+    broadcast("expenses", "delete", { id: req.params.id });
     res.status(204).send();
   });
 
@@ -731,6 +823,7 @@ export async function registerRoutes(
   app.post("/api/services", async (req, res) => {
     try {
       const service = await storage.createService(req.body);
+      broadcast("services", "create", service);
       res.status(201).json(service);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -741,6 +834,7 @@ export async function registerRoutes(
     try {
       const service = await storage.updateService(req.params.id, req.body);
       if (!service) return res.status(404).json({ message: "Service not found" });
+      broadcast("services", "update", service);
       res.json(service);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -749,6 +843,7 @@ export async function registerRoutes(
 
   app.delete("/api/services/:id", async (req, res) => {
     await storage.deleteService(req.params.id);
+    broadcast("services", "delete", { id: req.params.id });
     res.status(204).send();
   });
 

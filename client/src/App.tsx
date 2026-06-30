@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useWebSocketSync } from "@/hooks/use-websocket-sync";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Leads from "@/pages/leads";
@@ -39,6 +40,11 @@ function Router() {
   );
 }
 
+function WebSocketSyncTrigger() {
+  useWebSocketSync();
+  return null;
+}
+
 const sidebarStyle = {
   "--sidebar-width": "16rem",
   "--sidebar-width-icon": "3rem",
@@ -48,6 +54,7 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
+        <WebSocketSyncTrigger />
         <TooltipProvider>
           <SidebarProvider style={sidebarStyle as React.CSSProperties}>
             <div className="flex h-screen w-full">

@@ -1,4 +1,5 @@
 import { useLocation, Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
   Users,
@@ -27,24 +28,56 @@ import {
 import logoPath from "@assets/logo.png";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Leads", url: "/leads", icon: UserPlus },
-  { title: "Contacts", url: "/contacts", icon: Users },
-  { title: "Pipeline", url: "/pipeline", icon: Kanban },
-  { title: "Call Logs", url: "/call-logs", icon: Phone },
-  { title: "Tasks", url: "/tasks", icon: CheckSquare },
-  { title: "Invoices", url: "/invoices", icon: FileText },
-  { title: "Payments", url: "/payments", icon: CreditCard },
-  { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "dashboard" },
+  { title: "Leads", url: "/leads", icon: UserPlus, key: "leads" },
+  { title: "Contacts", url: "/contacts", icon: Users, key: "contacts" },
+  { title: "Pipeline", url: "/pipeline", icon: Kanban, key: "deals" },
+  { title: "Call Logs", url: "/call-logs", icon: Phone, key: "call-logs" },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare, key: "tasks" },
+  { title: "Invoices", url: "/invoices", icon: FileText, key: "invoices" },
+  { title: "Payments", url: "/payments", icon: CreditCard, key: "payments" },
+  { title: "Expenses", url: "/expenses", icon: Receipt, key: "expenses" },
 ];
 
 const settingsItems = [
-  { title: "Webhooks", url: "/webhooks", icon: Webhook },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Webhooks", url: "/webhooks", icon: Webhook, key: "webhooks" },
+  { title: "Settings", url: "/settings", icon: Settings, key: "settings" },
 ];
+
+function hasPermission(user: any, key: string) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (key === "dashboard") return true;
+
+  const permissions = user.permissions || {};
+  
+  if (user.role === "manager") {
+    return permissions[key] !== false;
+  }
+  
+  if (user.role === "staff") {
+    const staffDefaults: Record<string, boolean> = {
+      leads: true,
+      contacts: true,
+      deals: true,
+      "call-logs": true,
+      tasks: true,
+    };
+    if (permissions[key] !== undefined) {
+      return permissions[key] === true;
+    }
+    return !!staffDefaults[key];
+  }
+
+  return false;
+}
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const filteredMainItems = mainItems.filter((item) => hasPermission(user, item.key));
+  const filteredSettingsItems = settingsItems.filter((item) => hasPermission(user, item.key));
 
   return (
     <Sidebar>
@@ -55,48 +88,52 @@ export function AppSidebar() {
         <p className="text-xs text-muted-foreground mt-1">Creative Agency CRM</p>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    data-active={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>System</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    data-active={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {filteredMainItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Main</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredMainItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        {filteredSettingsItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>System</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredSettingsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      data-active={location === item.url}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, "-")}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4">
         <div className="text-xs text-muted-foreground">

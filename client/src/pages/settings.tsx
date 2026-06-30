@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
   Save,
   ExternalLink,
   IndianRupee,
+  ShieldCheck,
 } from "lucide-react";
 import type { Service } from "@shared/schema";
 import logoPath from "@assets/logo.png";
@@ -47,6 +49,7 @@ const TABS = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: settingsMap = {} } = useQuery<Record<string, string>>({
     queryKey: ["/api/settings"],
@@ -55,6 +58,11 @@ export default function SettingsPage() {
   const { data: servicesList = [] } = useQuery<Service[]>({
     queryKey: ["/api/services"],
   });
+
+  const availableTabs = [
+    ...TABS,
+    ...(user?.role === "admin" ? [{ key: "employees", label: "Employees & Permissions", icon: ShieldCheck }] : [])
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -65,7 +73,7 @@ export default function SettingsPage() {
 
       <div className="flex gap-6">
         <div className="w-48 shrink-0 space-y-1" data-testid="settings-tabs">
-          {TABS.map((tab) => (
+          {availableTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -91,6 +99,7 @@ export default function SettingsPage() {
           {activeTab === "services" && <ServicesTab services={servicesList} />}
           {activeTab === "social" && <SocialTab settings={settingsMap} />}
           {activeTab === "others" && <OthersTab settings={settingsMap} />}
+          {activeTab === "employees" && <EmployeesTab />}
         </div>
       </div>
     </div>
@@ -744,5 +753,181 @@ function OthersTab({ settings }: { settings: Record<string, string> }) {
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function EmployeesTab() {
+  const { toast } = useToast();
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [role, setRole] = useState("staff");
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+
+  const { data: usersList = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/users"],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, role, permissions }: any) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${id}`, { role, permissions });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setDialogOpen(false);
+      toast({ title: "Employee permissions updated successfully" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const openEdit = (u: any) => {
+    setEditingUser(u);
+    setRole(u.role || "staff");
+    const defaultPerms = {
+      leads: true,
+      contacts: true,
+      pipeline: true,
+      "call-logs": true,
+      tasks: true,
+      invoices: u.role !== "staff",
+      payments: u.role !== "staff",
+      expenses: u.role !== "staff",
+      webhooks: u.role !== "staff",
+      settings: u.role !== "staff",
+    };
+    setPermissions({ ...defaultPerms, ...(u.permissions || {}) });
+    setDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate({
+      id: editingUser.id,
+      role,
+      permissions
+    });
+  };
+
+  const modules = [
+    { key: "leads", name: "Leads & Contact Intake" },
+    { key: "contacts", name: "Contact Directories" },
+    { key: "pipeline", name: "Sales Pipeline & Deals (Kanban)" },
+    { key: "call-logs", name: "Call Logs & Summaries" },
+    { key: "tasks", name: "Tasks & Team Assignments" },
+    { key: "invoices", name: "Invoices & Template Billing" },
+    { key: "payments", name: "Payment Integrations" },
+    { key: "expenses", name: "Agency Expenses & Outflows" },
+    { key: "webhooks", name: "API Webhook Controls" },
+    { key: "settings", name: "Global Settings & Pricing" },
+  ];
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-muted-foreground">Loading employees...</div>;
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Employees & Permissions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {usersList.map((emp: any) => (
+              <div key={emp.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/10">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                    {emp.firstName ? emp.firstName[0].toUpperCase() : emp.email?.[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">
+                        {emp.firstName ? `${emp.firstName} ${emp.lastName || ""}` : emp.email}
+                      </p>
+                      <Badge variant={emp.role === "admin" ? "destructive" : emp.role === "manager" ? "default" : "secondary"}>
+                        {emp.role ? emp.role.toUpperCase() : "STAFF"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{emp.email}</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openEdit(emp)}>
+                  Manage Access
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Access Configuration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">User details</p>
+              <div className="p-3 border rounded-lg bg-muted/30">
+                <p className="text-sm font-medium">{editingUser?.firstName ? `${editingUser.firstName} ${editingUser.lastName || ""}` : editingUser?.email}</p>
+                <p className="text-xs text-muted-foreground">{editingUser?.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>CRM Access Role</Label>
+              <select
+                value={role}
+                onChange={(e) => {
+                  const newRole = e.target.value;
+                  setRole(newRole);
+                  if (newRole === "admin") {
+                    const allPerms: any = {};
+                    modules.forEach(m => {
+                      allPerms[m.key] = true;
+                    });
+                    setPermissions(allPerms);
+                  }
+                }}
+                className="w-full h-10 px-3 border rounded-md text-sm bg-background"
+              >
+                <option value="staff">Staff (Restricted Access)</option>
+                <option value="manager">Manager (Standard Access)</option>
+                <option value="admin">Administrator (Full Access)</option>
+              </select>
+            </div>
+
+            {role !== "admin" && (
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground">Authorized Modules</Label>
+                <p className="text-xs text-muted-foreground mb-3">Deselect the modules this employee should not see</p>
+                <div className="space-y-2 border rounded-lg p-3 max-h-60 overflow-y-auto">
+                  {modules.map((m) => {
+                    const mKey = m.key;
+                    return (
+                      <div key={m.key} className="flex items-center justify-between">
+                        <Label htmlFor={`perm-${m.key}`} className="text-sm font-normal leading-none cursor-pointer flex-1 py-1">
+                          {m.name}
+                        </Label>
+                        <Switch
+                          id={`perm-${m.key}`}
+                          checked={permissions[mKey] !== false}
+                          onCheckedChange={(checked) => setPermissions(p => ({ ...p, [mKey]: checked }))}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <Button onClick={handleSave} className="w-full mt-4" disabled={updateMutation.isPending}>
+              Apply & Save Configuration
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
