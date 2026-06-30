@@ -37,6 +37,7 @@ import {
   Send,
   FileText,
   X,
+  Download,
 } from "lucide-react";
 import type { Invoice, InvoiceItem, Lead, Contact, Service } from "@shared/schema";
 
@@ -457,6 +458,166 @@ export default function Invoices() {
     },
   });
 
+  const downloadInvoice = async (invoiceId: string) => {
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`);
+      const inv = await res.json();
+      const items = inv.items || [];
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast({ title: "Pop-up blocked", description: "Please allow pop-ups to print/download your invoice.", variant: "destructive" });
+        return;
+      }
+
+      const discountAmount = inv.discountValue
+        ? (inv.discountType === "percentage"
+          ? Math.round((inv.subtotal || 0) * (inv.discountValue / 100))
+          : inv.discountValue)
+        : 0;
+
+      const taxAmount = inv.taxPercentage
+        ? Math.round(((inv.subtotal || 0) - discountAmount) * (inv.taxPercentage / 100))
+        : 0;
+
+      const invoiceDate = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const dueDate = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
+
+      const itemsHtml = items.map((item: any, idx: number) =>
+        `<tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fafafa'}">
+          <td style="padding:12px 16px;border-bottom:1px solid #eee;color:#333;font-size:14px">${item.description}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:center;color:#555;font-size:14px">${item.quantity}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:right;color:#555;font-size:14px">₹${item.rate.toLocaleString("en-IN")}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:right;color:#333;font-weight:600;font-size:14px">₹${item.amount.toLocaleString("en-IN")}</td>
+        </tr>`
+      ).join("");
+
+      // Helper variables to prevent nested template string escaping issues
+      const dueDateHtml = dueDate ? `<p style="margin:2px 0 0;font-size:13px;color:#999">Due: ${dueDate}</p>` : "";
+      const clientEmailHtml = inv.clientEmail ? `<p style="margin:4px 0 0;font-size:13px;color:#666">${inv.clientEmail}</p>` : "";
+      const clientPhoneHtml = inv.clientPhone ? `<p style="margin:2px 0 0;font-size:13px;color:#666">${inv.clientPhone}</p>` : "";
+      const clientAddressHtml = inv.clientAddress ? `<p style="margin:2px 0 0;font-size:13px;color:#666">${inv.clientAddress}</p>` : "";
+      
+      const discountLabel = inv.discountType === "percentage" ? `${inv.discountValue}%` : "Fixed";
+      const discountHtml = discountAmount > 0 ? `
+        <tr>
+          <td style="padding:6px 0;font-size:14px;color:#22c55e">Discount (${discountLabel})</td>
+          <td style="padding:6px 0;font-size:14px;color:#22c55e;text-align:right;font-weight:500">-₹${discountAmount.toLocaleString("en-IN")}</td>
+        </tr>` : "";
+      
+      const taxHtml = taxAmount > 0 ? `
+        <tr>
+          <td style="padding:6px 0;font-size:14px;color:#666">Tax (${inv.taxPercentage}%)</td>
+          <td style="padding:6px 0;font-size:14px;color:#333;text-align:right;font-weight:500">₹${taxAmount.toLocaleString("en-IN")}</td>
+        </tr>` : "";
+
+      const notesHtml = inv.notes ? `
+        <div style="margin-top:30px;">
+          <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:600">Notes</p>
+          <p style="margin:8px 0 0;font-size:13px;color:#666;line-height:1.6">${inv.notes}</p>
+        </div>` : "";
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Invoice ${inv.invoiceNumber}</title>
+            <style>
+              @media print {
+                body { margin: 0; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; background: #fff; }
+                .no-print { display: none; }
+              }
+              body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.5; padding: 40px; background: #fafafa; }
+              .invoice-card { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 40px; }
+            </style>
+          </head>
+          <body>
+            <div class="invoice-card">
+              <!-- Top Red bar -->
+              <div style="height: 6px; background: #EE2B2B; margin: -40px -40px 30px -40px; border-top-left-radius: 8px; border-top-right-radius: 8px;"></div>
+              
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="vertical-align: top;">
+                    <h1 style="margin:0;font-size:36px;font-weight:800;color:#222;letter-spacing:-1px">Invoice</h1>
+                    <p style="margin:12px 0 0;font-size:16px;font-weight:700;color:#333">Canvas Cartel</p>
+                    <p style="margin:4px 0 0;font-size:13px;color:#777">Creative Agency Network</p>
+                    <p style="margin:2px 0 0;font-size:13px;color:#777">hello@canvascartel.in</p>
+                  </td>
+                  <td style="vertical-align: top; text-align: right;">
+                    <p style="margin:0;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Invoice No.</p>
+                    <p style="margin:4px 0 0;font-size:24px;font-weight:700;color:#EE2B2B">${inv.invoiceNumber}</p>
+                    <p style="margin:12px 0 0;font-size:13px;color:#999">Date: ${invoiceDate}</p>
+                    ${dueDateHtml}
+                  </td>
+                </tr>
+              </table>
+
+              <div style="border-top:2px solid #EE2B2B; margin: 25px 0;"></div>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f9f9f9;border-radius:8px;margin-bottom:30px;">
+                <tr>
+                  <td style="padding:20px">
+                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:600">Bill To</p>
+                    <p style="margin:8px 0 0;font-size:16px;font-weight:700;color:#333">${inv.clientName}</p>
+                    ${clientEmailHtml}
+                    ${clientPhoneHtml}
+                    ${clientAddressHtml}
+                  </td>
+                </tr>
+              </table>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-bottom:20px;">
+                <thead>
+                  <tr>
+                    <th style="padding:12px 16px;text-align:left;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Description</th>
+                    <th style="padding:12px 16px;text-align:center;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Qty</th>
+                    <th style="padding:12px 16px;text-align:right;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Rate</th>
+                    <th style="padding:12px 16px;text-align:right;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                </tbody>
+              </table>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="280" align="right" style="border-collapse:collapse;margin-top:20px;margin-bottom:30px;">
+                <tr>
+                  <td style="padding:6px 0;font-size:14px;color:#666">Subtotal</td>
+                  <td style="padding:6px 0;font-size:14px;color:#333;text-align:right;font-weight:500">₹${(inv.subtotal || 0).toLocaleString("en-IN")}</td>
+                </tr>
+                ${discountHtml}
+                ${taxHtml}
+                <tr><td colspan="2" style="padding:0"><div style="border-top:2px solid #EE2B2B;margin:8px 0"></div></td></tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:18px;font-weight:800;color:#222">Total</td>
+                  <td style="padding:8px 0;font-size:18px;font-weight:800;color:#222;text-align:right">₹${(inv.total || 0).toLocaleString("en-IN")}</td>
+                </tr>
+              </table>
+
+              <div style="clear: both;"></div>
+
+              ${notesHtml}
+
+              <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;">
+                <p style="margin:0;font-size:14px;font-weight:700;color:#333">Canvas Cartel</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#999">Thank you for your business!</p>
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (err: any) {
+      toast({ title: "Failed to download", description: err.message, variant: "destructive" });
+    }
+  };
+
   const openEdit = async (invoice: Invoice) => {
     try {
       const res = await fetch(`/api/invoices/${invoice.id}`);
@@ -611,6 +772,12 @@ export default function Invoices() {
                         data-testid={`button-send-invoice-${inv.id}`}
                       >
                         <Send className="w-4 h-4 mr-2" /> Send via Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => downloadInvoice(inv.id)}
+                        data-testid={`button-download-invoice-${inv.id}`}
+                      >
+                        <Download className="w-4 h-4 mr-2" /> Download PDF / Print
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => deleteMutation.mutate(inv.id)}
