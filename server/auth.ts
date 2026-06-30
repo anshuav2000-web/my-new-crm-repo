@@ -201,6 +201,43 @@ export function setupAuth(app: Express) {
       res.status(500).json({ message: error.message });
     }
   });
+
+  // Automatically seed the default Super Admin user on start
+  seedAdminUser();
+}
+
+export async function seedAdminUser() {
+  try {
+    const [existing] = await db.select().from(users).where(eq(users.username, "admin"));
+    if (!existing) {
+      console.log("[Seeder] Creating permanent Super Admin user...");
+      const hashedPassword = await hashPassword("CanvasCartelAdmin2026!");
+      
+      const modules = [
+        "leads", "contacts", "pipeline", "call-logs", "tasks", 
+        "invoices", "payments", "expenses", "webhooks", "settings"
+      ];
+      const permissions: Record<string, boolean> = {};
+      modules.forEach(m => {
+        permissions[m] = true;
+      });
+
+      await db.insert(users).values({
+        username: "admin",
+        password: hashedPassword,
+        fullName: "Super Admin",
+        email: "hello@canvascartel.in",
+        role: "admin",
+        permissions: permissions,
+        avatar: null,
+      });
+      console.log("[Seeder] Super Admin created successfully!");
+      console.log("[Seeder] Username: admin");
+      console.log("[Seeder] Password: CanvasCartelAdmin2026!");
+    }
+  } catch (error) {
+    console.error("[Seeder] Failed to seed Super Admin user:", error);
+  }
 }
 
 // Authentication middleware to guard API routes
