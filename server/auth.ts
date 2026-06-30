@@ -35,7 +35,7 @@ export function setupAuth(app: Express) {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     pool: pool,
-    createTableIfMissing: true, // Will automatically create sessions table in PostgreSQL!
+    createTableIfMissing: false, // Will automatically create sessions table in PostgreSQL!
     tableName: "sessions",
     ttl: sessionTtl / 1000,
   });
@@ -104,7 +104,7 @@ export function setupAuth(app: Express) {
       }
 
       const hashedPassword = await hashPassword(password);
-      
+
       // Determine role: make first user "admin", subsequent users "staff"
       const allUsers = await db.select().from(users);
       const role = allUsers.length === 0 ? "admin" : "staff";
@@ -212,9 +212,9 @@ export async function seedAdminUser() {
     if (!existing) {
       console.log("[Seeder] Creating permanent Super Admin user...");
       const hashedPassword = await hashPassword("CanvasCartelAdmin2026!");
-      
+
       const modules = [
-        "leads", "contacts", "pipeline", "call-logs", "tasks", 
+        "leads", "contacts", "pipeline", "call-logs", "tasks",
         "invoices", "payments", "expenses", "webhooks", "settings"
       ];
       const permissions: Record<string, boolean> = {};
