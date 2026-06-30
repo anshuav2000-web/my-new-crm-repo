@@ -60,11 +60,19 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const { setupAuth } = await import("./replit_integrations/auth/replitAuth");
-  const { registerAuthRoutes } = await import("./replit_integrations/auth/routes");
-  
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  // Run pending database migrations automatically on startup
+  try {
+    console.log("Running pending database migrations...");
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    const { db } = await import("./db");
+    await migrate(db, { migrationsFolder: "./migrations" });
+    console.log("Database migrations completed successfully!");
+  } catch (error) {
+    console.error("Database migration failed on startup:", error);
+  }
+
+  const { setupAuth } = await import("./auth");
+  setupAuth(app);
 
   const { seedDatabase } = await import("./seed");
   await registerRoutes(httpServer, app);

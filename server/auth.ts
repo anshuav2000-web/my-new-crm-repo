@@ -1,0 +1,211 @@
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import session from "express-session";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import crypto from "crypto";
+import { promisify } from "util";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { broadcastEvent } from "./routes";
+
+const scryptAsync = promisify(crypto.scrypt);
+
+// Hash password with scrypt
+async function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+// Compare password
+async function comparePasswords(supplied: string, hashed: string) {
+  try {
+    const [hashedPassword, salt] = hashed.split(".");
+    const buf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return crypto.timingSafeEqual(Buffer.from(hashedPassword, "hex"), buf);
+  } catch (err) {
+    return false;
+  }
+}
+
+export function setupAuth(app: Express) {
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    pool: pool,
+    createTableIfMissing: true, // Will automatically create sessions table in PostgreSQL!
+    tableName: "sessions",
+    ttl: sessionTtl / 1000,
+  });
+
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "canvas_cartel_crm_fallback_secret",
+      store: sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: sessionTtl,
+      },
+    })
+  );
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  passport.use(
+    new LocalStrategy(async (username, password, done) => {
+      try {
+        const [user] = await db.select().from(users).where(eq(users.username, username));
+        if (!user) {
+          return done(null, false, { message: "Incorrect username." });
+        }
+        const isValid = await comparePasswords(password, user.password);
+        if (!isValid) {
+          return done(null, false, { message: "Incorrect password." });
+        }
+        return done(null, user);
+      } catch (err) {
+        return done(err);
+      }
+    })
+  );
+
+  passport.serializeUser((user: any, cb) => {
+    cb(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: string, cb) => {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      cb(null, user);
+    } catch (err) {
+      cb(err);
+    }
+  });
+
+  // ========== AUTHENTICATION ENDPOINTS ==========
+
+  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { username, password, fullName, email } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required." });
+      }
+
+      // Check if user already exists
+      const [existing] = await db.select().from(users).where(eq(users.username, username));
+      if (existing) {
+        return res.status(400).json({ message: "Username already exists." });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      
+      // Determine role: make first user "admin", subsequent users "staff"
+      const allUsers = await db.select().from(users);
+      const role = allUsers.length === 0 ? "admin" : "staff";
+
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username,
+          password: hashedPassword,
+          fullName: fullName || null,
+          email: email || null,
+          role,
+          avatar: null,
+        })
+        .returning();
+
+      req.login(newUser, (err) => {
+        if (err) return next(err);
+        return res.status(201).json(newUser);
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(400).json({ message: info?.message || "Login failed" });
+      }
+      req.login(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        return res.json(user);
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/logout", (req: Request, res: Response, next: NextFunction) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.json({ success: true, message: "Logged out successfully" });
+    });
+  });
+
+  app.get("/api/auth/user", (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    return res.json(req.user);
+  });
+
+  // Admin: Get all users
+  app.get("/api/admin/users", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      if (currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Admin access required" });
+      }
+
+      const allUsers = await db.select().from(users);
+      res.json(allUsers);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: Update user role & permissions
+  app.patch("/api/admin/users/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      if (currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Admin access required" });
+      }
+
+      const targetUserId = req.params.id as string;
+      const { role, permissions } = req.body;
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          role: role || undefined,
+          permissions: permissions || undefined,
+        })
+        .where(eq(users.id, targetUserId))
+        .returning();
+
+      // Broadcast real-time permission sync
+      broadcastEvent("users", "update", updatedUser);
+
+      res.json(updatedUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+}
+
+// Authentication middleware to guard API routes
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ message: "Unauthorized: Please log in." });
+}

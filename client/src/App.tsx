@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useWebSocketSync } from "@/hooks/use-websocket-sync";
+import { useAuth } from "@/hooks/use-auth";
+import AuthPage from "@/pages/auth";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Leads from "@/pages/leads";
@@ -50,29 +52,49 @@ const sidebarStyle = {
   "--sidebar-width-icon": "3rem",
 };
 
+function AppContent() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="flex items-center justify-between gap-2 p-2 border-b shrink-0">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <span className="text-sm font-medium text-muted-foreground">Canvas Cartel CRM</span>
+            </div>
+            <ThemeToggle />
+          </header>
+          <main className="flex-1 overflow-auto">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <WebSocketSyncTrigger />
         <TooltipProvider>
-          <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 min-w-0">
-                <header className="flex items-center justify-between gap-2 p-2 border-b shrink-0">
-                  <div className="flex items-center gap-2">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    <span className="text-sm font-medium text-muted-foreground">Canvas Cartel CRM</span>
-                  </div>
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto">
-                  <Router />
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
+          <AppContent />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

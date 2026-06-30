@@ -31,6 +31,7 @@ RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/attached_assets ./attached_assets
 
 # Expose production port
