@@ -126,7 +126,8 @@ export function setupAuth(app: Express) {
         return res.status(201).json(newUser);
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error("REGISTRATION ERROR TRACE:", err);
+      return res.status(500).json({ message: err.message || "Internal server registration failure." });
     }
   });
 
