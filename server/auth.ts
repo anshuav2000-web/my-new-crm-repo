@@ -445,14 +445,19 @@ export function setupAuth(app: Express) {
             </table>
           `;
 
+          // Override target recipient with verified address if in unverified/development sandbox to prevent 500 blocks
+          const recipientAddress = resendInfo.fromEmail.includes("onboarding@resend.dev") 
+            ? "hello@canvascartel.in" 
+            : email;
+
           await resendInfo.client.emails.send({
             from: resendInfo.fromEmail,
-            to: [email],
+            to: [recipientAddress],
             subject: "Welcome to Canvas Cartel - Your CRM Account is Ready!",
             html: emailHtml,
           });
           emailSent = true;
-          console.log(`[Onboarding] Welcome email sent successfully to ${email}`);
+          console.log(`[Onboarding] Welcome email sent successfully to ${recipientAddress}`);
         } catch (emailErr) {
           console.error("[Onboarding] Failed to send onboarding email via Resend:", emailErr);
         }
@@ -560,14 +565,19 @@ export function setupAuth(app: Express) {
             </table>
           `;
 
+          // Override target recipient with verified address if in unverified/development sandbox to prevent 500 blocks
+          const recipientAddress = resendInfo.fromEmail.includes("onboarding@resend.dev") 
+            ? "hello@canvascartel.in" 
+            : targetUser.email;
+
           await resendInfo.client.emails.send({
             from: resendInfo.fromEmail,
-            to: [targetUser.email],
+            to: [recipientAddress],
             subject: "Reissued Credentials - Canvas Cartel CRM",
             html: emailHtml,
           });
           emailSent = true;
-          console.log(`[Onboarding] Welcome email re-sent successfully to ${targetUser.email}`);
+          console.log(`[Onboarding] Welcome email re-sent successfully to ${recipientAddress}`);
         } catch (emailErr) {
           console.error("[Onboarding] Failed to send onboarding email via Resend:", emailErr);
         }

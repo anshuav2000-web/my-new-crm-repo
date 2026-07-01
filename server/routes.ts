@@ -771,9 +771,17 @@ export async function registerRoutes(
       `;
 
       const { client: resend, fromEmail } = await getResendClient();
+      
+      // Override client email with verified testing domain email if in unverified/development sandbox
+      let targetRecipient = invoice.clientEmail;
+      if (fromEmail.includes("onboarding@resend.dev")) {
+        console.warn("[Resend Sandbox Mode] Redirecting client invoice email to verified super admin account to prevent unverified domain 500 blocks.");
+        targetRecipient = "hello@canvascartel.in";
+      }
+
       const emailResult = await resend.emails.send({
         from: fromEmail,
-        to: [invoice.clientEmail],
+        to: [targetRecipient],
         subject: `Invoice ${invoice.invoiceNumber} from Canvas Cartel`,
         html: emailHtml,
       });
