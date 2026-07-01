@@ -108,16 +108,18 @@ function InvoiceForm({
     setItems([...items, { description: "", quantity: 1, rate: 0, amount: 0 }]);
   };
 
-  const addService = (service: { name: string; rate: number }) => {
-    setItems([
-      ...items,
-      {
-        description: service.name,
-        quantity: 1,
-        rate: service.rate,
-        amount: service.rate,
-      },
-    ]);
+  const addService = (service: any) => {
+    const newItem = {
+      description: service.name + (service.description ? ` - ${service.description}` : ""),
+      quantity: 1,
+      rate: service.rate,
+      amount: service.rate,
+    };
+    if (items.length === 1 && items[0].description === "" && items[0].rate === 0) {
+      setItems([newItem]);
+    } else {
+      setItems([...items, newItem]);
+    }
   };
 
   const updateItem = (index: number, field: keyof ItemRow, value: string | number) => {
