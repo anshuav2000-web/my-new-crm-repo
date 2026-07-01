@@ -99,7 +99,7 @@ export function setupAuth(app: Express) {
     session({
       secret: process.env.SESSION_SECRET || "canvas_cartel_crm_fallback_secret",
       store: sessionStore,
-      resave: false,
+      resave: true, // Force session to save back to the session store
       saveUninitialized: false,
       proxy: true, // Required for trust proxy session cookie detection over reverse proxies
       cookie: {
