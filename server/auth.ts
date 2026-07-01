@@ -101,9 +101,11 @@ export function setupAuth(app: Express) {
       store: sessionStore,
       resave: false,
       saveUninitialized: false,
+      proxy: true, // Required for trust proxy session cookie detection over reverse proxies
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
+        sameSite: "lax", // Ensure same-site lax is set to allow session transfers correctly
         maxAge: sessionTtl,
       },
     })
