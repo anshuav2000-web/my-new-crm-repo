@@ -470,6 +470,120 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Admin: Delete (Fire) an employee account
+  app.delete("/api/admin/users/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      if (currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Only administrators can fire employees." });
+      }
+
+      const targetUserId = req.params.id as string;
+      if (targetUserId === currentUser.id) {
+        return res.status(400).json({ message: "Conflict: You cannot delete/fire your own admin account!" });
+      }
+
+      await db.delete(users).where(eq(users.id, targetUserId));
+
+      // Broadcast update to sync user state across all connected interfaces in real-time
+      broadcastEvent("users", "delete", { id: targetUserId });
+
+      res.status(200).json({ success: true, message: "Employee account removed successfully." });
+    } catch (error: any) {
+      console.error("[Onboarding] Failed to delete user account:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: Reset password and resend welcome onboarding email
+  app.post("/api/admin/users/:id/resend-welcome", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      if (currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Only administrators can dispatch welcome credentials." });
+      }
+
+      const targetUserId = req.params.id as string;
+      const [targetUser] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!targetUser) {
+        return res.status(404).json({ message: "Employee account not found." });
+      }
+
+      // Generate a fresh temporary password and update database
+      const tempPassword = "CC_Temp_" + crypto.randomBytes(3).toString("hex").toUpperCase();
+      const hashedTempPassword = await hashPassword(tempPassword);
+
+      await db
+        .update(users)
+        .set({ password: hashedTempPassword })
+        .where(eq(users.id, targetUserId));
+
+      // Broadcast update
+      broadcastEvent("users", "update", targetUser);
+
+      let emailSent = false;
+      const resendInfo = await getResendClient();
+      if (resendInfo && targetUser.email) {
+        try {
+          const emailHtml = `
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+              <tr>
+                <td style="background:#0A1628;padding:40px;color:#ffffff;text-align:center">
+                  <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.5px">Canvas Cartel Connect</h1>
+                  <p style="margin:8px 0 0;font-size:13px;color:#B3B9C6;letter-spacing:0.5px">AI Automation & Digital Solutions</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:40px;color:#4A4F5C;line-height:1.6">
+                  <p style="margin:0;font-size:16px;font-weight:700;color:#0A1628">Hello ${targetUser.fullName || targetUser.username},</p>
+                  <p style="margin:12px 0 0;font-size:14px">Your access credentials for the **Canvas Cartel CRM** system have been re-issued by your administrator.</p>
+                  
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:25px 0;background:#F4F6FB;border-radius:8px;padding:20px">
+                    <tr>
+                      <td style="font-size:13px">
+                        <div style="margin-bottom:8px">🔗 <strong>CRM Link:</strong> <a href="https://ccrm.canvascartel.in" style="color:#1E5EFF;font-weight:600;text-decoration:none">ccrm.canvascartel.in</a></div>
+                        <div style="margin-bottom:8px">👤 <strong>Username:</strong> <code style="font-family:monospace;background:#E5E7EB;padding:2px 6px;border-radius:4px">${targetUser.username}</code></div>
+                        <div>🔑 <strong>Temporary Password:</strong> <code style="font-family:monospace;background:#E5E7EB;padding:2px 6px;border-radius:4px">${tempPassword}</code></div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="margin:0;font-size:13px;color:#E53E3E;font-weight:600">⚠️ IMPORTANT ACTION REQUIRED:</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#6B7280">Please log in immediately using your new temporary password and update it by navigating to your <strong>My Profile</strong> tab inside settings.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background:#F4F6FB;padding:20px;text-align:center;font-size:12px;color:#8A8F9C;border-top:1px solid #E5E7EB">
+                  Canvas Cartel • Gurugram • hello@canvascartel.in
+                </td>
+              </tr>
+            </table>
+          `;
+
+          await resendInfo.client.emails.send({
+            from: resendInfo.fromEmail,
+            to: [targetUser.email],
+            subject: "Reissued Credentials - Canvas Cartel CRM",
+            html: emailHtml,
+          });
+          emailSent = true;
+          console.log(`[Onboarding] Welcome email re-sent successfully to ${targetUser.email}`);
+        } catch (emailErr) {
+          console.error("[Onboarding] Failed to send onboarding email via Resend:", emailErr);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        tempPassword,
+        emailSent,
+      });
+    } catch (error: any) {
+      console.error("[Onboarding] Failed to resend onboarding email:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Automatically seed the default Super Admin user on start
   seedAdminUser();
 }

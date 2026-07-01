@@ -822,7 +822,6 @@ function EmployeesTab() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setCreatedResult(data);
-      // Reset form fields
       setNewUsername("");
       setNewEmail("");
       setNewFullName("");
@@ -833,6 +832,34 @@ function EmployeesTab() {
     },
     onError: (err: Error) => {
       toast({ title: "Failed to create employee", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const fireEmployeeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/users/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Employee account removed successfully." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Action failed", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const resendWelcomeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${id}/resend-welcome`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCreatedResult(data);
+      toast({ title: "Onboarding credentials reissued successfully!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Resend failed", description: err.message, variant: "destructive" });
     }
   });
 
@@ -921,9 +948,32 @@ function EmployeesTab() {
                     <p className="text-xs text-muted-foreground mt-0.5">{emp.email || `@${emp.username}`}</p>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => openEdit(emp)}>
-                  Manage Access
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-[#EE2B2B]/20 text-[#EE2B2B] hover:bg-[#EE2B2B]/10 hover:text-[#EE2B2B]"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to fire / remove ${emp.fullName || emp.username}? This action is permanent.`)) {
+                        fireEmployeeMutation.mutate(emp.id);
+                      }
+                    }}
+                    disabled={fireEmployeeMutation.isPending}
+                  >
+                    Fire
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => resendWelcomeMutation.mutate(emp.id)}
+                    disabled={resendWelcomeMutation.isPending}
+                  >
+                    Resend Onboarding Mail
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(emp)}>
+                    Manage Access
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
