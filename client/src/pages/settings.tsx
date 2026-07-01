@@ -33,6 +33,7 @@ import {
   ShieldCheck,
   User,
   Lock,
+  UserPlus,
 } from "lucide-react";
 import type { Service } from "@shared/schema";
 import logoPath from "@assets/logo.png";
@@ -773,6 +774,16 @@ function EmployeesTab() {
   const [role, setRole] = useState("staff");
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
 
+  // Employee creation state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState("staff");
+  const [newDept, setNewDept] = useState("");
+  const [newDesig, setNewDesig] = useState("");
+  const [createdResult, setCreatedResult] = useState<any>(null);
+
   const { data: usersList = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
   });
@@ -789,6 +800,28 @@ function EmployeesTab() {
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const createEmployeeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/create-user", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setCreatedResult(data);
+      // Reset form fields
+      setNewUsername("");
+      setNewEmail("");
+      setNewFullName("");
+      setNewRole("staff");
+      setNewDept("");
+      setNewDesig("");
+      toast({ title: "Employee account onboarded successfully!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to create employee", description: err.message, variant: "destructive" });
     }
   });
 
@@ -819,6 +852,18 @@ function EmployeesTab() {
     });
   };
 
+  const handleCreateEmployeeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createEmployeeMutation.mutate({
+      username: newUsername,
+      email: newEmail,
+      fullName: newFullName,
+      role: newRole,
+      department: newDept,
+      designation: newDesig,
+    });
+  };
+
   const modules = [
     { key: "leads", name: "Leads & Contact Intake" },
     { key: "contacts", name: "Contact Directories" },
@@ -839,8 +884,11 @@ function EmployeesTab() {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Employees & Permissions</CardTitle>
+          <Button onClick={() => setCreateOpen(true)} size="sm" className="bg-[#EE2B2B] hover:bg-[#c92222] text-white">
+            <UserPlus className="w-4 h-4 mr-2" /> Add Employee
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -848,18 +896,18 @@ function EmployeesTab() {
               <div key={emp.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/10">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                    {emp.firstName ? emp.firstName[0].toUpperCase() : emp.email?.[0].toUpperCase()}
+                    {emp.fullName ? emp.fullName[0].toUpperCase() : emp.username[0].toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">
-                        {emp.firstName ? `${emp.firstName} ${emp.lastName || ""}` : emp.email}
+                        {emp.fullName || emp.username}
                       </p>
                       <Badge variant={emp.role === "admin" ? "destructive" : emp.role === "manager" ? "default" : "secondary"}>
                         {emp.role ? emp.role.toUpperCase() : "STAFF"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{emp.email}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{emp.email || `@${emp.username}`}</p>
                   </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => openEdit(emp)}>
@@ -870,6 +918,115 @@ function EmployeesTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Account Creation Modal Form */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Onboard New Employee</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateEmployeeSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-fullname">Full Name *</Label>
+              <Input
+                id="emp-fullname"
+                value={newFullName}
+                onChange={(e) => setNewFullName(e.target.value)}
+                placeholder="e.g. Anshu"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-email">Email Address *</Label>
+              <Input
+                id="emp-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="e.g. anshu@canvascartel.in"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-username">Username *</Label>
+              <Input
+                id="emp-username"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="e.g. anshu"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="emp-dept">Department</Label>
+                <Input
+                  id="emp-dept"
+                  value={newDept}
+                  onChange={(e) => setNewDept(e.target.value)}
+                  placeholder="e.g. Design"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="emp-desig">Designation</Label>
+                <Input
+                  id="emp-desig"
+                  value={newDesig}
+                  onChange={(e) => setNewDesig(e.target.value)}
+                  placeholder="e.g. Creative Lead"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-role">CRM Access Role</Label>
+              <select
+                id="emp-role"
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value)}
+                className="w-full h-10 px-3 border rounded-md text-sm bg-background"
+              >
+                <option value="staff">Staff (Restricted Access)</option>
+                <option value="manager">Manager (Standard Access)</option>
+                <option value="admin">Administrator (Full Access)</option>
+              </select>
+            </div>
+
+            <p className="text-[10px] text-muted-foreground italic">
+              * The system will automatically generate a secure temporary password and dispatch a welcome email with the login credentials to their inbox.
+            </p>
+
+            <Button type="submit" className="w-full h-10 bg-[#EE2B2B] hover:bg-[#c92222]" disabled={createEmployeeMutation.isPending}>
+              {createEmployeeMutation.isPending ? "Creating Account..." : "Onboard Employee"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Account Creation Success Dialog */}
+      <Dialog open={!!createdResult} onOpenChange={() => setCreatedResult(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Account Created Successfully!</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">The employee profile has been created successfully inside the CRM directory.</p>
+            
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3 font-mono text-sm">
+              <div>👤 <strong>Username:</strong> {createdResult?.user?.username}</div>
+              <div>🔑 <strong>Temporary Password:</strong> {createdResult?.tempPassword}</div>
+              <div>📧 <strong>Onboarding Email Status:</strong> {createdResult?.emailSent ? "✅ Welcomed via Email" : "⚠️ Offline (Pass given above)"}</div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Please copy these details and send them manually if the onboarding mail is offline. The employee must change their password on first sign-in.
+            </p>
+
+            <Button onClick={() => setCreatedResult(null)} className="w-full">
+              Dismiss & Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">

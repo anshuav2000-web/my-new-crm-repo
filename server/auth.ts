@@ -9,6 +9,7 @@ import { db, pool } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { broadcastEvent } from "./routes";
+import { Resend } from "resend";
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -28,6 +29,43 @@ async function comparePasswords(supplied: string, hashed: string) {
   } catch (err) {
     return false;
   }
+}
+
+// Get resend email client securely with fallbacks
+async function getResendClient() {
+  if (process.env.RESEND_API_KEY) {
+    return {
+      client: new Resend(process.env.RESEND_API_KEY),
+      fromEmail: "Canvas Cartel <onboarding@resend.dev>",
+    };
+  }
+
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? "repl " + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? "depl " + process.env.WEB_REPL_RENEWAL
+    : null;
+
+  if (xReplitToken && hostname) {
+    try {
+      const connectionSettings = await fetch(
+        "https://" + hostname + "/api/v2/connection?include_secrets=true&connector_names=resend",
+        { headers: { Accept: "application/json", X_REPLIT_TOKEN: xReplitToken } }
+      ).then((r) => r.json()).then((data) => data.items?.[0]);
+
+      if (connectionSettings && connectionSettings.settings.api_key) {
+        return {
+          client: new Resend(connectionSettings.settings.api_key),
+          fromEmail: connectionSettings.settings.from_email || "Canvas Cartel <onboarding@resend.dev>",
+        };
+      }
+    } catch (e) {
+      console.error("Failed to fetch Resend from Replit connector:", e);
+    }
+  }
+
+  return null;
 }
 
 export function setupAuth(app: Express) {
@@ -292,6 +330,119 @@ export function setupAuth(app: Express) {
 
       res.json(updatedUser);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: Register fresh employee user, auto-generate temporary password and send a gorgeous welcome email
+  app.post("/api/admin/create-user", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as any;
+      if (currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Only administrators can create accounts." });
+      }
+
+      const { username, email, fullName, role, department, designation } = req.body;
+      if (!username || !email || !fullName) {
+        return res.status(400).json({ message: "Username, email, and full name are required." });
+      }
+
+      // Check if username already exists
+      const [existingUser] = await db.select().from(users).where(eq(users.username, username));
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists." });
+      }
+
+      // Auto-generate safe temporary password
+      const tempPassword = "CC_Temp_" + crypto.randomBytes(3).toString("hex").toUpperCase();
+      const hashedTempPassword = await hashPassword(tempPassword);
+
+      // Default modules permissions based on role
+      const modules = ["leads", "contacts", "pipeline", "call-logs", "tasks", "invoices", "payments", "expenses", "webhooks", "settings"];
+      const permissions: Record<string, boolean> = {};
+      modules.forEach((m) => {
+        permissions[m] = role === "manager" || ["leads", "contacts", "pipeline", "call-logs", "tasks"].includes(m);
+      });
+
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username,
+          password: hashedTempPassword,
+          fullName,
+          email,
+          role: role || "staff",
+          department: department || null,
+          designation: designation || null,
+          permissions,
+          avatar: null,
+        })
+        .returning();
+
+      // Broadcast real-time creation
+      broadcastEvent("users", "create", newUser);
+
+      // Try sending onboarding welcome email with Resend
+      let emailSent = false;
+      const resendInfo = await getResendClient();
+      if (resendInfo) {
+        try {
+          const emailHtml = `
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+              <tr>
+                <td style="background:#0A1628;padding:40px;color:#ffffff;text-align:center">
+                  <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.5px">Canvas Cartel Connect</h1>
+                  <p style="margin:8px 0 0;font-size:13px;color:#B3B9C6;letter-spacing:0.5px">AI Automation & Digital Solutions</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:40px;color:#4A4F5C;line-height:1.6">
+                  <p style="margin:0;font-size:16px;font-weight:700;color:#0A1628">Hello ${fullName},</p>
+                  <p style="margin:12px 0 0;font-size:14px">Welcome to the team! A fresh account has been successfully created for you on the **Canvas Cartel CRM** system.</p>
+                  
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:25px 0;background:#F4F6FB;border-radius:8px;padding:20px">
+                    <tr>
+                      <td style="font-size:13px">
+                        <div style="margin-bottom:8px">🔗 <strong>CRM Link:</strong> <a href="https://ccrm.canvascartel.in" style="color:#1E5EFF;font-weight:600;text-decoration:none">ccrm.canvascartel.in</a></div>
+                        <div style="margin-bottom:8px">👤 <strong>Username:</strong> <code style="font-family:monospace;background:#E5E7EB;padding:2px 6px;border-radius:4px">${username}</code></div>
+                        <div>🔑 <strong>Temporary Password:</strong> <code style="font-family:monospace;background:#E5E7EB;padding:2px 6px;border-radius:4px">${tempPassword}</code></div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="margin:0;font-size:13px;color:#E53E3E;font-weight:600">⚠️ IMPORTANT ACTION REQUIRED:</p>
+                  <p style="margin:6px 0 0;font-size:13px;color:#6B7280">Please log in immediately using your temporary password and update it by navigating to your <strong>My Profile</strong> tab inside settings.</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background:#F4F6FB;padding:20px;text-align:center;font-size:12px;color:#8A8F9C;border-top:1px solid #E5E7EB">
+                  Canvas Cartel • Gurugram • hello@canvascartel.in
+                </td>
+              </tr>
+            </table>
+          `;
+
+          await resendInfo.client.emails.send({
+            from: resendInfo.fromEmail,
+            to: [email],
+            subject: "Welcome to Canvas Cartel - Your CRM Account is Ready!",
+            html: emailHtml,
+          });
+          emailSent = true;
+          console.log(`[Onboarding] Welcome email sent successfully to ${email}`);
+        } catch (emailErr) {
+          console.error("[Onboarding] Failed to send onboarding email via Resend:", emailErr);
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        user: newUser,
+        tempPassword,
+        emailSent,
+      });
+    } catch (error: any) {
+      console.error("[Onboarding] Failed to create user account:", error);
       res.status(500).json({ message: error.message });
     }
   });

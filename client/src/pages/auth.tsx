@@ -201,160 +201,71 @@ export default function AuthPage() {
               </Card>
             </div>
           ) : (
-            /* Standard Sign In & Join Team tab layout */
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" className="text-xs font-bold uppercase tracking-wider">
-                  <LogIn className="w-3.5 h-3.5 mr-2" />
+            /* Standard Sign In layout (Join Team has been removed) */
+            <Card className="border shadow-md">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <LogIn className="w-5 h-5 text-[#EE2B2B]" />
                   Sign In
-                </TabsTrigger>
-                <TabsTrigger value="register" className="text-xs font-bold uppercase tracking-wider">
-                  <UserPlus className="w-3.5 h-3.5 mr-2" />
-                  Join Team
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login">
-                <Card className="border-none shadow-none p-0 bg-transparent">
-                  <CardHeader className="p-0 mb-4">
-                    <CardTitle className="text-xl font-bold">Sign In</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">
-                      Enter your workspace credentials to access your dashboard.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="login-username">Username</Label>
-                        <Input
-                          id="login-username"
-                          type="text"
-                          value={loginUsername}
-                          onChange={(e) => setLoginUsername(e.target.value)}
-                          placeholder="e.g. anshu"
-                          required
-                          className="h-10"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="login-password">Password</Label>
-                          <button
-                            type="button"
-                            onClick={() => setIsForgotPassword(true)}
-                            className="text-[11px] font-medium text-[#EE2B2B] hover:underline"
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <Input
-                            id="login-password"
-                            type={showPassword ? "text" : "password"}
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                            className="h-10 pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full h-10 mt-2 font-bold bg-[#EE2B2B] hover:bg-[#c92222] text-white"
-                        disabled={loginMutation.isPending}
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Enter your workspace credentials to access your dashboard.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-username">Username</Label>
+                    <Input
+                      id="login-username"
+                      type="text"
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      placeholder="e.g. admin"
+                      required
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-[11px] font-medium text-[#EE2B2B] hover:underline"
                       >
-                        {loginMutation.isPending ? "Signing In..." : "Sign In"}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <Card className="border-none shadow-none p-0 bg-transparent">
-                  <CardHeader className="p-0 mb-4">
-                    <CardTitle className="text-xl font-bold">Register Account</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">
-                      Create a fresh profile to register yourself as an agency employee.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="reg-fullname">Full Name</Label>
-                        <Input
-                          id="reg-fullname"
-                          type="text"
-                          value={regFullName}
-                          onChange={(e) => setRegFullName(e.target.value)}
-                          placeholder="e.g. Anshu"
-                          className="h-10"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="reg-email">Email Address</Label>
-                        <Input
-                          id="reg-email"
-                          type="email"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="e.g. anshu@canvascartel.in"
-                          className="h-10"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="reg-username">Username *</Label>
-                        <Input
-                          id="reg-username"
-                          type="text"
-                          value={regUsername}
-                          onChange={(e) => setRegUsername(e.target.value)}
-                          placeholder="e.g. anshu"
-                          required
-                          className="h-10"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="reg-password">Password *</Label>
-                        <div className="relative">
-                          <Input
-                            id="reg-password"
-                            type={showPassword ? "text" : "password"}
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                            className="h-10 pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full h-10 mt-2 font-bold bg-[#EE2B2B] hover:bg-[#c92222] text-white"
-                        disabled={registerMutation.isPending}
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="h-10 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        {registerMutation.isPending ? "Creating Account..." : "Create Account"}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-10 mt-2 font-bold bg-[#EE2B2B] hover:bg-[#c92222] text-white"
+                    disabled={loginMutation.isPending}
+                  >
+                    {loginMutation.isPending ? "Signing In..." : "Sign In"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
