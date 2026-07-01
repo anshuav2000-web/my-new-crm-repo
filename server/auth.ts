@@ -204,7 +204,11 @@ export function setupAuth(app: Express) {
   app.post("/api/logout", (req: Request, res: Response, next: NextFunction) => {
     req.logout((err) => {
       if (err) return next(err);
-      res.json({ success: true, message: "Logged out successfully" });
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) return next(destroyErr);
+        res.clearCookie("connect.sid"); // Clear the session cookie explicitly
+        res.json({ success: true, message: "Logged out successfully" });
+      });
     });
   });
 
