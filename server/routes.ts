@@ -4,9 +4,34 @@ import { storage } from "./storage";
 import { log } from "./index";
 import { Resend } from "resend";
 import { WebSocketServer, WebSocket } from "ws";
+import { isAuthenticated } from "./auth";
 
-// Resend integration - fetches credentials from Replit connector
+// Resend integration - checks DB settings first, then environment keys, then Replit connectors
 async function getResendClient() {
+  try {
+    const settingsArr = await storage.getSettings();
+    const settingsMap: Record<string, string> = {};
+    for (const s of settingsArr) {
+      if (s.value !== null) settingsMap[s.key] = s.value;
+    }
+
+    if (settingsMap.resend_api_key) {
+      return {
+        client: new Resend(settingsMap.resend_api_key),
+        fromEmail: settingsMap.company_email ? `Canvas Cartel <${settingsMap.company_email}>` : "Canvas Cartel <onboarding@resend.dev>",
+      };
+    }
+  } catch (err) {
+    console.error("Failed to query settings from DB in getResendClient:", err);
+  }
+
+  if (process.env.RESEND_API_KEY) {
+    return {
+      client: new Resend(process.env.RESEND_API_KEY),
+      fromEmail: "Canvas Cartel <onboarding@resend.dev>",
+    };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -15,7 +40,7 @@ async function getResendClient() {
     : null;
 
   if (!xReplitToken || !hostname) {
-    throw new Error("Resend integration not available");
+    throw new Error("Resend API key is not configured. Please set it in system settings.");
   }
 
   const connectionSettings = await fetch(
@@ -24,7 +49,7 @@ async function getResendClient() {
   ).then((r) => r.json()).then((data) => data.items?.[0]);
 
   if (!connectionSettings || !connectionSettings.settings.api_key) {
-    throw new Error("Resend not connected");
+    throw new Error("Resend integration not connected.");
   }
   return {
     client: new Resend(connectionSettings.settings.api_key),
@@ -941,6 +966,77 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ========== AI ASSISTANT CONTENT GENERATOR ==========
+  app.post("/api/ai/generate", isAuthenticated, async (req, res) => {
+    try {
+      const { prompt, contextType } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required." });
+      }
+
+      // Check DB settings first for Gemini API Key
+      const settingsArr = await storage.getSettings();
+      const settingsMap: Record<string, string> = {};
+      for (const s of settingsArr) {
+        if (s.value !== null) settingsMap[s.key] = s.value;
+      }
+
+      const apiKey = settingsMap.gemini_api_key || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ 
+          message: "Gemini API Key is not configured. Please enter your API key under Settings > API Integrations tab." 
+        });
+      }
+
+      // Build context instruction based on contextType
+      let instruction = "";
+      if (contextType === "service_description") {
+        instruction = "You are a professional creative agency Copywriter. Generate a concise, beautiful, high-converting service description (2-3 sentences) explaining this service and why clients need it. Respond with only the direct description text, no intro, no outro, no markdown bolding unless necessary.";
+      } else if (contextType === "lead_note") {
+        instruction = "You are an experienced Sales Director. Analyze the following request/activity and generate a structured, strategic sales follow-up note or intake note for this lead (2 sentences max). Only respond with the note text.";
+      } else if (contextType === "deal_note") {
+        instruction = "Write a clear, strategic executive deal update note (2 sentences max) describing the value and project scope. Response should have no intro/outro.";
+      } else if (contextType === "invoice_notes") {
+        instruction = "Generate a short, friendly, professional thank-you note and terms disclaimer for an invoice (1-2 sentences).";
+      } else {
+        instruction = "You are a creative business assistant at Canvas Cartel agency. Generate professional, clear copy based on the request. Max 3 sentences, no filler.";
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `${instruction}\n\nUser Request: ${prompt}`
+                  }
+                ]
+              }
+            ]
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API Error Response:", errorText);
+        return res.status(response.status).json({ message: "Failed to fetch response from Gemini. Please make sure your API key is valid." });
+      }
+
+      const result = await response.json();
+      const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+
+      res.json({ text: generatedText });
+    } catch (err: any) {
+      console.error("AI Generation Error:", err);
+      res.status(500).json({ message: err.message });
     }
   });
 

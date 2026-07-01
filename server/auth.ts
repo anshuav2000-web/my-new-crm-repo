@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { promisify } from "util";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { users } from "@shared/schema";
+import { users, settings } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { broadcastEvent } from "./routes";
 import { Resend } from "resend";
@@ -33,6 +33,23 @@ async function comparePasswords(supplied: string, hashed: string) {
 
 // Get resend email client securely with fallbacks
 async function getResendClient() {
+  try {
+    const settingsArr = await db.select().from(settings);
+    const settingsMap: Record<string, string> = {};
+    for (const s of settingsArr) {
+      if (s.value !== null) settingsMap[s.key] = s.value;
+    }
+
+    if (settingsMap.resend_api_key) {
+      return {
+        client: new Resend(settingsMap.resend_api_key),
+        fromEmail: settingsMap.company_email ? `Canvas Cartel <${settingsMap.company_email}>` : "Canvas Cartel <onboarding@resend.dev>",
+      };
+    }
+  } catch (err) {
+    console.error("Failed to query DB settings inside auth:getResendClient:", err);
+  }
+
   if (process.env.RESEND_API_KEY) {
     return {
       client: new Resend(process.env.RESEND_API_KEY),

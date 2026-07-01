@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { AIAssistantButton } from "@/components/ai-assistant-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -465,7 +466,14 @@ function LeadForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="description">Description</Label>
+          <AIAssistantButton
+            contextType="service_description"
+            onGenerate={(text) => setFormData({ ...formData, description: text })}
+            placeholder={`e.g. Generate description for client request: ${formData.name}`}
+          />
+        </div>
         <Textarea
           id="description"
           value={formData.description}
@@ -475,7 +483,14 @@ function LeadForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notes">Notes</Label>
+          <AIAssistantButton
+            contextType="lead_note"
+            onGenerate={(text) => setFormData({ ...formData, notes: text })}
+            placeholder={`e.g. Write lead intake follow-up plan for: ${formData.name}`}
+          />
+        </div>
         <Textarea
           id="notes"
           value={formData.notes}

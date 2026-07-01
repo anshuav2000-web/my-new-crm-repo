@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { AIAssistantButton } from "@/components/ai-assistant-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -403,7 +404,14 @@ function InvoiceForm({
       </div>
 
       <div>
-        <Label>Notes</Label>
+        <div className="flex items-center justify-between mb-1.5">
+          <Label>Notes</Label>
+          <AIAssistantButton
+            contextType="invoice_notes"
+            onGenerate={(text) => setFormData({ ...formData, notes: text })}
+            placeholder={`e.g. Write a friendly billing note for: ${formData.clientName}`}
+          />
+        </div>
         <Textarea
           data-testid="input-notes"
           value={formData.notes}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { AIAssistantButton } from "@/components/ai-assistant-button";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   User,
   Lock,
   UserPlus,
+  Cpu,
 } from "lucide-react";
 import type { Service } from "@shared/schema";
 import logoPath from "@assets/logo.png";
@@ -41,6 +43,7 @@ import logoPath from "@assets/logo.png";
 const TABS = [
   { key: "profile", label: "My Profile", icon: User },
   { key: "general", label: "General", icon: Settings2 },
+  { key: "integrations", label: "API Integrations", icon: Cpu },
   { key: "logo", label: "Logo", icon: Image },
   { key: "colors", label: "Colors", icon: Palette },
   { key: "contact", label: "Contact", icon: Phone },
@@ -103,6 +106,7 @@ export default function SettingsPage() {
         <div className="flex-1 min-w-0">
           {activeTab === "profile" && <ProfileTab />}
           {activeTab === "general" && <GeneralTab settings={settingsMap} />}
+          {activeTab === "integrations" && <IntegrationsTab settings={settingsMap} />}
           {activeTab === "logo" && <LogoTab />}
           {activeTab === "colors" && <ColorsTab settings={settingsMap} />}
           {activeTab === "contact" && <ContactTab settings={settingsMap} />}
@@ -578,7 +582,14 @@ function ServicesTab({ services }: { services: Service[] }) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <div className="flex items-center justify-between">
+                <Label>Description</Label>
+                <AIAssistantButton
+                  contextType="service_description"
+                  onGenerate={(text) => setDescription(text)}
+                  placeholder={`e.g. Describe service: ${name || 'Website Design'}`}
+                />
+              </div>
               <Input
                 data-testid="input-service-description"
                 value={description}
@@ -1271,5 +1282,84 @@ function ProfileTab() {
         </div>
       </div>
     </div>
+  );
+}
+
+function IntegrationsTab({ settings }: { settings: Record<string, string> }) {
+  const save = useSaveSettings();
+  const [geminiKey, setGeminiKey] = useState(settings.gemini_api_key || "");
+  const [resendKey, setResendKey] = useState(settings.resend_api_key || "");
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    save.mutate({
+      gemini_api_key: geminiKey,
+      resend_api_key: resendKey,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Cpu className="w-5 h-5 text-[#EE2B2B]" />
+          External API Integrations
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-6">
+          <p className="text-xs text-muted-foreground">
+            Configure external API connections securely. These settings are saved in the production database and override environment variables automatically.
+          </p>
+
+          <div className="space-y-4 border rounded-lg p-4 bg-muted/5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-bold text-sm text-[#EE2B2B]">✨ Google Gemini AI</span>
+              <Badge variant="outline" className="text-[10px]">Content Generation</Badge>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gemini-key">Gemini API Key</Label>
+              <Input
+                id="gemini-key"
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="font-mono h-10"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Required to generate high-converting service descriptions and lead intake notes. Get yours from Google AI Studio.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4 border rounded-lg p-4 bg-muted/5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-bold text-sm text-[#EE2B2B]">📧 Resend Email Delivery</span>
+              <Badge variant="outline" className="text-[10px]">Invoices & Welcomes</Badge>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="resend-key">Resend API Key</Label>
+              <Input
+                id="resend-key"
+                type="password"
+                value={resendKey}
+                onChange={(e) => setResendKey(e.target.value)}
+                placeholder="re_..."
+                className="font-mono h-10"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Required to dispatch invoices and onboarding credentials to employee emails. Get yours from Resend Dashboard.
+              </p>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={save.isPending} className="bg-[#EE2B2B] hover:bg-[#c92222] text-white">
+            <Save className="w-4 h-4 mr-2" />
+            {save.isPending ? "Saving Keys..." : "Apply & Save API Keys"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
