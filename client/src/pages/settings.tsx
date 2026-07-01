@@ -876,8 +876,8 @@ function EmployeesTab() {
   };
 
   const modules = [
-    { key: "leads", name: "Leads & Contact Intake" },
-    { key: "contacts", name: "Contact Directories" },
+    { key: "leads", name: "Leads & Client Intake" },
+    { key: "contacts", name: "Client Directories" },
     { key: "pipeline", name: "Sales Pipeline & Deals (Kanban)" },
     { key: "call-logs", name: "Call Logs & Summaries" },
     { key: "tasks", name: "Tasks & Team Assignments" },

@@ -47,7 +47,7 @@ function ContactForm({ contact, onClose }: { contact?: Contact; onClose: () => v
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      toast({ title: contact ? "Contact updated" : "Contact created" });
+      toast({ title: contact ? "Client updated" : "Client created" });
       onClose();
     },
     onError: (err: Error) => {
@@ -84,9 +84,11 @@ function ContactForm({ contact, onClose }: { contact?: Contact; onClose: () => v
         <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} data-testid="input-contact-notes" />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-contact">
+          Cancel
+        </Button>
         <Button type="submit" disabled={mutation.isPending} data-testid="button-save-contact">
-          {mutation.isPending ? "Saving..." : contact ? "Update" : "Create Contact"}
+          {mutation.isPending ? "Saving..." : contact ? "Update Client" : "Create Client"}
         </Button>
       </div>
     </form>
@@ -130,17 +132,17 @@ export default function Contacts() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-contacts-title">Contacts</h1>
-          <p className="text-muted-foreground">Manage your contact list</p>
+          <h1 className="text-2xl font-bold" data-testid="text-contacts-title">Clients</h1>
+          <p className="text-muted-foreground">Manage your client list</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) handleClose(); else setDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button onClick={() => { setEditingContact(undefined); setDialogOpen(true); }} data-testid="button-add-contact">
-              <Plus className="w-4 h-4 mr-2" />Add Contact
+              <Plus className="w-4 h-4 mr-2" />Add Client
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editingContact ? "Edit Contact" : "Add Contact"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingContact ? "Edit Client" : "Add Client"}</DialogTitle></DialogHeader>
             <ContactForm contact={editingContact} onClose={handleClose} />
           </DialogContent>
         </Dialog>
@@ -148,7 +150,7 @@ export default function Contacts() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search contacts..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-contacts" />
+        <Input placeholder="Search clients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-contacts" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -190,7 +192,7 @@ export default function Contacts() {
             </CardContent>
           </Card>
         )) : (
-          <div className="col-span-full text-center py-12 text-muted-foreground">No contacts found</div>
+          <div className="col-span-full text-center py-12 text-muted-foreground">No clients found</div>
         )}
       </div>
     </div>

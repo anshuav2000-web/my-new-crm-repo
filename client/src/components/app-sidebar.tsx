@@ -30,7 +30,7 @@ import logoPath from "@assets/logo.png";
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "dashboard" },
   { title: "Leads", url: "/leads", icon: UserPlus, key: "leads" },
-  { title: "Contacts", url: "/contacts", icon: Users, key: "contacts" },
+  { title: "Clients", url: "/contacts", icon: Users, key: "contacts" },
   { title: "Pipeline", url: "/pipeline", icon: Kanban, key: "deals" },
   { title: "Call Logs", url: "/call-logs", icon: Phone, key: "call-logs" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, key: "tasks" },
