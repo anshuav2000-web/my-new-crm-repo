@@ -756,7 +756,11 @@ export async function registerRoutes(
               </div>
 
               <!-- Footer Contact info -->
-              <div style="border-top:1px solid #E5E7EB;padding-top:15px;text-align:center">
+              <div style="border-top:1px solid #E5E7EB;padding-top:20px;margin-top:25px;text-align:center">
+                <div style="margin-bottom:15px;font-size:11px;line-height:1.6;color:#8A8F9C;text-align:center;max-width:540px;margin-left:auto;margin-right:auto">
+                  <strong style="color:#0A1628;text-transform:uppercase;letter-spacing:0.8px">What We Do & What We Serve:</strong><br/>
+                  We specialize in high-impact Advertisement Design, Social Media Content, full-scale Website Development, Video & Photo Production, Growth Marketing Strategy, and robust n8n Workflow Automation. Built for peak performance.
+                </div>
                 <p style="margin:0;font-size:12px;color:#6B7280;font-weight:500">Canvas Cartel • hello@canvascartel.in</p>
                 <p style="margin:4px 0 0 0;font-size:11px;color:#9CA3AF;font-style:italic">This is a computer-generated invoice.</p>
               </div>
