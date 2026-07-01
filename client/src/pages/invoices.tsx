@@ -87,6 +87,8 @@ function InvoiceForm({
     dueDate: invoice?.dueDate || "",
   });
 
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+
   const [items, setItems] = useState<ItemRow[]>(
     invoice?.items?.map((i) => ({
       description: i.description,
@@ -113,8 +115,8 @@ function InvoiceForm({
     const newItem = {
       description: service.name + (service.description ? ` - ${service.description}` : ""),
       quantity: 1,
-      rate: service.rate,
-      amount: service.rate,
+      rate: Number(service.rate) || 0,
+      amount: Number(service.rate) || 0,
     };
     if (items.length === 1 && items[0].description === "" && items[0].rate === 0) {
       setItems([newItem]);
@@ -275,22 +277,32 @@ function InvoiceForm({
       <div>
         <div className="flex items-center justify-between mb-2">
           <Label className="text-base font-semibold">Services / Line Items</Label>
-          <div className="flex gap-2">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="button-add-service">
-                  <Plus className="w-3 h-3 mr-1" /> Add Service
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="z-[9999] max-h-60 overflow-y-auto">
-                {servicesList.filter(s => s.isActive !== false).map((s) => (
-                  <DropdownMenuItem key={s.id} onClick={() => addService(s)}>
-                    {s.name} (₹{s.rate.toLocaleString("en-IN")})
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={addItem} data-testid="button-add-item">
+          <div className="flex gap-2 items-center">
+            <Select
+              value={selectedServiceId}
+              onValueChange={(val) => {
+                if (!val) return;
+                const selected = servicesList.find((s) => s.id === val);
+                if (selected) {
+                  addService(selected);
+                }
+                setSelectedServiceId(""); // Reset selector immediately
+              }}
+            >
+              <SelectTrigger className="w-48 h-9 text-xs border border-input bg-background" data-testid="button-add-service">
+                <SelectValue placeholder="Add Service" />
+              </SelectTrigger>
+              <SelectContent className="z-[99999]">
+                {servicesList
+                  .filter((s) => s.isActive !== false)
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} (₹{s.rate.toLocaleString("en-IN")})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={addItem} data-testid="button-add-item" className="h-9">
               <Plus className="w-3 h-3 mr-1" /> Custom Item
             </Button>
           </div>
