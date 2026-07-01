@@ -43,7 +43,7 @@ async function getResendClient() {
     if (settingsMap.resend_api_key) {
       return {
         client: new Resend(settingsMap.resend_api_key),
-        fromEmail: settingsMap.company_email ? `Canvas Cartel <${settingsMap.company_email}>` : (process.env.RESEND_FROM_EMAIL || "Canvas Cartel <onboarding@resend.dev>"),
+        fromEmail: settingsMap.company_email ? `Canvas Cartel <${settingsMap.company_email}>` : "Canvas Cartel <info@canvascartel.in>",
       };
     }
   } catch (err) {
@@ -53,7 +53,7 @@ async function getResendClient() {
   if (process.env.RESEND_API_KEY) {
     return {
       client: new Resend(process.env.RESEND_API_KEY),
-      fromEmail: process.env.RESEND_FROM_EMAIL || "Canvas Cartel <onboarding@resend.dev>",
+      fromEmail: process.env.RESEND_FROM_EMAIL || "Canvas Cartel <info@canvascartel.in>",
     };
   }
 
