@@ -90,7 +90,7 @@ export function setupAuth(app: Express) {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     pool: pool,
-    createTableIfMissing: false, // Will automatically create sessions table in PostgreSQL!
+    createTableIfMissing: true, // Will automatically create sessions table in PostgreSQL!
     tableName: "sessions",
     ttl: sessionTtl / 1000,
   });

@@ -599,54 +599,97 @@ export default function Invoices() {
             <title>Invoice ${inv.invoiceNumber}</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-              @media print {
-                body { margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; }
-                .invoice-container { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
-                .no-print { display: none; }
-              }
-              body { 
-                font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; 
-                color: #4A4F5C; 
-                line-height: 1.5; 
-                padding: 40px 0; 
-                background: #F4F6FB; 
+              
+              /* Reset and Page Setup for perfect A4 fitting */
+              @page {
+                size: A4 portrait;
                 margin: 0;
               }
+              
+              @media print {
+                html, body {
+                  width: 210mm;
+                  height: 297mm;
+                  background: #fff;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                body {
+                  margin: 0;
+                  padding: 0;
+                }
+                .invoice-container {
+                  box-shadow: none !important;
+                  border: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: 210mm !important;
+                  height: 297mm !important;
+                  border-radius: 0 !important;
+                  display: flex !important;
+                  flex-direction: column !important;
+                  justify-content: space-between !important;
+                  box-sizing: border-box !important;
+                }
+                .content-area {
+                  padding: 0 50px 30px 50px !important;
+                  flex: 1 !important;
+                }
+                .no-print { display: none; }
+              }
+
+              html, body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+                color: #4A4F5C;
+                line-height: 1.4;
+                background: #F4F6FB;
+              }
+              
               .invoice-container { 
-                max-width: 840px; 
-                margin: 0 auto; 
+                width: 210mm;
+                min-height: 297mm;
+                margin: 20px auto; 
                 background: #ffffff; 
                 box-shadow: 0 10px 25px rgba(10, 22, 40, 0.05); 
                 border-radius: 12px; 
                 overflow: hidden; 
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
                 box-sizing: border-box;
               }
               .header-band {
                 background: #0A1628;
-                padding: 50px 60px;
+                padding: 35px 50px;
                 color: #ffffff;
                 box-sizing: border-box;
               }
               .content-area {
-                padding: 0 60px 50px 60px;
+                padding: 0 50px 35px 50px;
                 box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                flex: 1;
               }
               .info-bar {
                 background: #F4F6FB;
-                margin: 30px 0;
+                margin: 20px 0;
                 border-radius: 8px;
-                padding: 20px 30px;
+                padding: 15px 25px;
               }
               .section-label {
-                font-size: 11px;
+                font-size: 10px;
                 text-transform: uppercase;
                 letter-spacing: 1.5px;
                 color: #8A8F9C;
                 font-weight: 700;
-                margin-bottom: 6px;
+                margin-bottom: 4px;
               }
               .section-value {
-                font-size: 15px;
+                font-size: 14px;
                 color: #0A1628;
                 font-weight: 700;
               }
@@ -654,9 +697,9 @@ export default function Invoices() {
                 display: inline-block;
                 background: ${statusBg};
                 color: #ffffff;
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 800;
-                padding: 6px 16px;
+                padding: 4px 14px;
                 border-radius: 14px;
                 letter-spacing: 1px;
                 text-align: center;
@@ -665,173 +708,175 @@ export default function Invoices() {
           </head>
           <body>
             <div class="invoice-container">
-              <!-- 1. Header Band -->
-              <div class="header-band">
-                <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                  <tr>
-                    <td style="vertical-align: middle;">
-                      <img src="https://canvascartel.in/wp-content/uploads/2023/10/canvas-cartel-logo.png" alt="Canvas Cartel" style="height: 38px; width: auto; display: block;" onerror="this.src='https://placehold.co/180x40/0a1628/ffffff?text=Canvas+Cartel'"/>
-                      <p style="margin: 8px 0 0 0; font-size: 13px; color: #B3B9C6; font-weight: 500; letter-spacing: 0.5px;">AI Automation & Digital Solutions</p>
-                    </td>
-                    <td style="vertical-align: middle; text-align: right;">
-                      <h1 style="margin: 0; font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -1.5px; text-transform: uppercase;">INVOICE</h1>
-                      <p style="margin: 6px 0 0 0; font-size: 14px; color: #B3B9C6; font-weight: 600; letter-spacing: 1px;">NO: ${inv.invoiceNumber}</p>
-                      ${monthlyPlanBadgeHtml}
-                    </td>
-                  </tr>
-                </table>
-              </div>
-
-              <div class="content-area">
-                <!-- 2. Info Bar -->
-                <div class="info-bar">
+              <div>
+                <!-- 1. Header Band -->
+                <div class="header-band">
                   <table cellpadding="0" cellspacing="0" border="0" width="100%">
                     <tr>
-                      <td width="33.33%">
-                        <div class="section-label">Issue Date</div>
-                        <div class="section-value">${invoiceDate}</div>
+                      <td style="vertical-align: middle;">
+                        <img src="https://canvascartel.in/wp-content/uploads/2023/10/canvas-cartel-logo.png" alt="Canvas Cartel" style="height: 34px; width: auto; display: block;" onerror="this.src='https://placehold.co/180x40/0a1628/ffffff?text=Canvas+Cartel'"/>
+                        <p style="margin: 6px 0 0 0; font-size: 12px; color: #B3B9C6; font-weight: 500; letter-spacing: 0.5px;">AI Automation & Digital Solutions</p>
                       </td>
-                      <td width="33.33%" style="text-align: center; border-left: 1px solid #E5E7EB; border-right: 1px solid #E5E7EB;">
-                        <div class="section-label">Due Date</div>
-                        <div class="section-value">${dueDate}</div>
-                      </td>
-                      <td width="33.33%" style="text-align: right; padding-right: 10px;">
-                        <div class="section-label">Status</div>
-                        <div class="pill-badge">${statusLabel}</div>
+                      <td style="vertical-align: middle; text-align: right;">
+                        <h1 style="margin: 0; font-size: 34px; font-weight: 800; color: #ffffff; letter-spacing: -1px; text-transform: uppercase;">INVOICE</h1>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #B3B9C6; font-weight: 600; letter-spacing: 1px;">NO: ${inv.invoiceNumber}</p>
+                        ${monthlyPlanBadgeHtml}
                       </td>
                     </tr>
                   </table>
                 </div>
 
-                <!-- 3. Bill To / From -->
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 40px;">
-                  <tr>
-                    <td width="50%" style="vertical-align: top; padding-right: 30px;">
-                      <div class="section-label" style="margin-bottom: 10px;">Bill To</div>
-                      <div style="font-size: 16px; font-weight: 700; color: #0A1628; margin-bottom: 6px;">${inv.clientName}</div>
-                      ${inv.clientEmail ? `<div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">${inv.clientEmail}</div>` : ""}
-                      ${inv.clientPhone ? `<div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">${inv.clientPhone}</div>` : ""}
-                      ${inv.clientAddress ? `<div style="font-size: 13px; color: #4A4F5C; line-height: 1.4;">${inv.clientAddress}</div>` : ""}
-                    </td>
-                    <td width="50%" style="vertical-align: top; padding-left: 30px; border-left: 1px solid #E5E7EB;">
-                      <div class="section-label" style="margin-bottom: 10px;">From</div>
-                      <div style="font-size: 16px; font-weight: 700; color: #0A1628; margin-bottom: 6px;">Canvas Cartel</div>
-                      <div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">hello@canvascartel.in</div>
-                      <div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">+91 9876543210</div>
-                      <div style="font-size: 13px; color: #4A4F5C; line-height: 1.4;">DLF Cyber City, Phase 3, Gurugram, HR, India</div>
-                    </td>
-                  </tr>
-                </table>
-
-                <!-- 4. Line Items Table -->
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-bottom: 40px;">
-                  <thead>
-                    <tr style="background: #F4F6FB; border-bottom: 2px solid #0A1628; height: 42px;">
-                      <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px;">Description</th>
-                      <th style="padding: 12px 16px; text-align: center; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 80px;">Qty</th>
-                      <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 140px;">Rate</th>
-                      <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 140px;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${itemsHtml}
-                  </tbody>
-                </table>
-
-                <!-- 5. Totals -->
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 45px;">
-                  <tr>
-                    <td style="vertical-align: top;">
-                      <!-- Subtotal & GST Details -->
-                      <table cellpadding="0" cellspacing="0" border="0" width="260" style="font-size: 14px;">
-                        <tr>
-                          <td style="padding: 6px 0; color: #8A8F9C;">Subtotal</td>
-                          <td style="padding: 6px 0; text-align: right; color: #0A1628; font-weight: 700;">Rs. ${(inv.subtotal || 0).toLocaleString("en-IN")}</td>
-                        </tr>
-                        ${discountHtml}
-                        ${taxHtml}
-                      </table>
-                    </td>
-                    <td style="vertical-align: top; text-align: right;">
-                      <!-- Total Box -->
-                      <div style="display: inline-block; background: #1E5EFF; color: #ffffff; padding: 20px 30px; border-radius: 8px; text-align: right; width: 320px; box-sizing: border-box; box-shadow: 0 4px 12px rgba(30, 94, 255, 0.15);">
-                        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; opacity: 0.85; margin-bottom: 4px;">Total Amount Due</div>
-                        <div style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">Rs. ${(inv.total || 0).toLocaleString("en-IN")}</div>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-
-                <!-- 6. Payment Terms -->
-                <div style="margin-bottom: 35px;">
-                  <h3 style="font-size: 15px; font-weight: 700; color: #0A1628; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid #E5E7EB; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms</h3>
-                  <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #4A4F5C; line-height: 1.6;">
-                    <li>Payments are due within 15 days of the invoice date unless explicitly specified.</li>
-                    <li>Please quote the Invoice Number as a reference with all transfers.</li>
-                    <li>Payment via UPI / NetBanking / Bank Transfer is accepted.</li>
-                    <li>Overdue accounts will be subject to a service charge of 1.5% per month.</li>
-                    <li>Digital products or automated systems will only be fully released post final settlement.</li>
-                    <li>GST invoices will be generated and issued upon request.</li>
-                  </ol>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6" style="display: flex; gap: 30px; margin-bottom: 45px;">
-                  <!-- 7. Notes -->
-                  <div style="flex: 1;">
-                    <h3 style="font-size: 15px; font-weight: 700; color: #0A1628; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Notes</h3>
-                    <p style="margin: 0; font-size: 13px; color: #6B7280; font-style: italic; line-height: 1.5;">
-                      ${inv.notes || "Thank you for choosing Canvas Cartel. We appreciate your business and look forward to supporting your AI automation requirements."}
-                    </p>
-                  </div>
-
-                  <!-- 8. Payment Details Box -->
-                  <div style="flex: 1; background: #F4F6FB; border-radius: 8px; padding: 20px; box-sizing: border-box;">
-                    <h3 style="font-size: 13px; font-weight: 700; color: #0A1628; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Payment Details</h3>
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size: 12px; line-height: 1.8;">
+                <div class="content-area">
+                  <!-- 2. Info Bar -->
+                  <div class="info-bar">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="color: #8A8F9C;">UPI ID:</td>
-                        <td style="text-align: right; color: #0A1628; font-weight: 700;">9971193032@ptsbi</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #8A8F9C;">Account No:</td>
-                        <td style="text-align: right; color: #0A1628; font-weight: 700;">5445178208</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #8A8F9C;">IFSC Code:</td>
-                        <td style="text-align: right; color: #0A1628; font-weight: 700;">KKBK0004627</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #8A8F9C;">Bank Branch:</td>
-                        <td style="text-align: right; color: #0A1628; font-weight: 700;">Kotak Bank, Delhi - Saket</td>
+                        <td width="33.33%">
+                          <div class="section-label">Issue Date</div>
+                          <div class="section-value">${invoiceDate}</div>
+                        </td>
+                        <td width="33.33%" style="text-align: center; border-left: 1px solid #E5E7EB; border-right: 1px solid #E5E7EB;">
+                          <div class="section-label">Due Date</div>
+                          <div class="section-value">${dueDate}</div>
+                        </td>
+                        <td width="33.33%" style="text-align: right; padding-right: 10px;">
+                          <div class="section-label">Status</div>
+                          <div class="pill-badge">${statusLabel}</div>
+                        </td>
                       </tr>
                     </table>
                   </div>
-                </div>
 
-                <!-- 9. Footer Signatures -->
-                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 40px;">
-                  <tr>
-                    <td width="45%" style="text-align: center;">
-                      <div style="border: 1px dashed #D1D5DB; padding: 25px; border-radius: 4px; height: 110px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
-                        <div style="font-size: 12px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Authorised Signature</div>
-                      </div>
-                    </td>
-                    <td width="10%"></td>
-                    <td width="45%" style="text-align: center;">
-                      <div style="border: 1px dashed #D1D5DB; padding: 25px; border-radius: 4px; height: 110px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
-                        <div style="font-size: 12px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Company Seal / Stamp</div>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
+                  <!-- 3. Bill To / From -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 25px;">
+                    <tr>
+                      <td width="50%" style="vertical-align: top; padding-right: 25px;">
+                        <div class="section-label" style="margin-bottom: 8px;">Bill To</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #0A1628; margin-bottom: 4px;">${inv.clientName}</div>
+                        ${inv.clientEmail ? `<div style="font-size: 12px; color: #4A4F5C; margin-bottom: 2px;">${inv.clientEmail}</div>` : ""}
+                        ${inv.clientPhone ? `<div style="font-size: 12px; color: #4A4F5C; margin-bottom: 2px;">${inv.clientPhone}</div>` : ""}
+                        ${inv.clientAddress ? `<div style="font-size: 12px; color: #4A4F5C; line-height: 1.3;">${inv.clientAddress}</div>` : ""}
+                      </td>
+                      <td width="50%" style="vertical-align: top; padding-left: 25px; border-left: 1px solid #E5E7EB;">
+                        <div class="section-label" style="margin-bottom: 8px;">From</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #0A1628; margin-bottom: 4px;">Canvas Cartel</div>
+                        <div style="font-size: 12px; color: #4A4F5C; margin-bottom: 2px;">hello@canvascartel.in</div>
+                        <div style="font-size: 12px; color: #4A4F5C; margin-bottom: 2px;">+91 9876543210</div>
+                        <div style="font-size: 12px; color: #4A4F5C; line-height: 1.3;">DLF Cyber City, Phase 3, Gurugram, HR, India</div>
+                      </td>
+                    </tr>
+                  </table>
 
-                <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 30px; text-align: center;">
-                  <div style="margin-bottom: 15px; font-size: 11px; line-height: 1.6; color: #8A8F9C; text-align: center; max-width: 620px; margin-left: auto; margin-right: auto;">
-                    <strong style="color: #0A1628; text-transform: uppercase; letter-spacing: 0.8px;">What We Do & What We Serve:</strong><br/>
-                    We specialize in high-impact Advertisement Design, Social Media Content, full-scale Website Development, Video & Photo Production, Growth Marketing Strategy, and robust n8n Workflow Automation. Built for peak performance.
+                  <!-- 4. Line Items Table -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-bottom: 25px;">
+                    <thead>
+                      <tr style="background: #F4F6FB; border-bottom: 2px solid #0A1628; height: 36px;">
+                        <th style="padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px;">Description</th>
+                        <th style="padding: 10px 14px; text-align: center; font-size: 11px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 60px;">Qty</th>
+                        <th style="padding: 10px 14px; text-align: right; font-size: 11px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 120px;">Rate</th>
+                        <th style="padding: 10px 14px; text-align: right; font-size: 11px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 120px;">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${itemsHtml}
+                    </tbody>
+                  </table>
+
+                  <!-- 5. Totals -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 30px;">
+                    <tr>
+                      <td style="vertical-align: top;">
+                        <!-- Subtotal & GST Details -->
+                        <table cellpadding="0" cellspacing="0" border="0" width="240" style="font-size: 13px;">
+                          <tr>
+                            <td style="padding: 4px 0; color: #8A8F9C;">Subtotal</td>
+                            <td style="padding: 4px 0; text-align: right; color: #0A1628; font-weight: 700;">Rs. ${(inv.subtotal || 0).toLocaleString("en-IN")}</td>
+                          </tr>
+                          ${discountHtml}
+                          ${taxHtml}
+                        </table>
+                      </td>
+                      <td style="vertical-align: top; text-align: right;">
+                        <!-- Total Box -->
+                        <div style="display: inline-block; background: #1E5EFF; color: #ffffff; padding: 15px 25px; border-radius: 8px; text-align: right; width: 300px; box-sizing: border-box; box-shadow: 0 4px 12px rgba(30, 94, 255, 0.15);">
+                          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; opacity: 0.85; margin-bottom: 2px;">Total Amount Due</div>
+                          <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Rs. ${(inv.total || 0).toLocaleString("en-IN")}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- 6. Payment Terms -->
+                  <div style="margin-bottom: 25px;">
+                    <h3 style="font-size: 13px; font-weight: 700; color: #0A1628; margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms</h3>
+                    <ol style="margin: 0; padding-left: 15px; font-size: 12px; color: #4A4F5C; line-height: 1.5;">
+                      <li>Payments are due within 15 days of the invoice date unless explicitly specified.</li>
+                      <li>Please quote the Invoice Number as a reference with all transfers.</li>
+                      <li>Payment via UPI / NetBanking / Bank Transfer is accepted.</li>
+                      <li>Overdue accounts will be subject to a service charge of 1.5% per month.</li>
+                      <li>Digital products or automated systems will only be fully released post final settlement.</li>
+                      <li>GST invoices will be generated and issued upon request.</li>
+                    </ol>
                   </div>
-                  <p style="margin: 0; font-size: 12px; color: #6B7280; font-weight: 500;">Canvas Cartel • DLF Cyber City, Gurugram • hello@canvascartel.in</p>
-                  <p style="margin: 4px 0 0 0; font-size: 11px; color: #9CA3AF; font-style: italic;">This is a computer-generated invoice.</p>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6" style="display: flex; gap: 20px; margin-bottom: 30px;">
+                    <!-- 7. Notes -->
+                    <div style="flex: 1;">
+                      <h3 style="font-size: 13px; font-weight: 700; color: #0A1628; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">Notes</h3>
+                      <p style="margin: 0; font-size: 12px; color: #6B7280; font-style: italic; line-height: 1.4;">
+                        ${inv.notes || "Thank you for choosing Canvas Cartel. We appreciate your business and look forward to supporting your AI automation requirements."}
+                      </p>
+                    </div>
+
+                    <!-- 8. Payment Details Box -->
+                    <div style="flex: 1; background: #F4F6FB; border-radius: 8px; padding: 15px; box-sizing: border-box;">
+                      <h3 style="font-size: 12px; font-weight: 700; color: #0A1628; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">Payment Details</h3>
+                      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size: 11px; line-height: 1.6;">
+                        <tr>
+                          <td style="color: #8A8F9C;">UPI ID:</td>
+                          <td style="text-align: right; color: #0A1628; font-weight: 700;">9971193032@ptsbi</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #8A8F9C;">Account No:</td>
+                          <td style="text-align: right; color: #0A1628; font-weight: 700;">5445178208</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #8A8F9C;">IFSC Code:</td>
+                          <td style="text-align: right; color: #0A1628; font-weight: 700;">KKBK0004627</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #8A8F9C;">Bank Branch:</td>
+                          <td style="text-align: right; color: #0A1628; font-weight: 700;">Kotak Bank, Saket</td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- 9. Footer Signatures -->
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 25px;">
+                    <tr>
+                      <td width="45%" style="text-align: center;">
+                        <div style="border: 1px dashed #D1D5DB; padding: 15px; border-radius: 4px; height: 80px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
+                          <div style="font-size: 11px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Authorised Signature</div>
+                        </div>
+                      </td>
+                      <td width="10%"></td>
+                      <td width="45%" style="text-align: center;">
+                        <div style="border: 1px dashed #D1D5DB; padding: 15px; border-radius: 4px; height: 80px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
+                          <div style="font-size: 11px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Company Seal / Stamp</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div style="border-top: 1px solid #E5E7EB; padding-top: 15px; margin-top: 15px; text-align: center;">
+                    <div style="margin-bottom: 10px; font-size: 10px; line-height: 1.5; color: #8A8F9C; text-align: center; max-width: 620px; margin-left: auto; margin-right: auto;">
+                      <strong style="color: #0A1628; text-transform: uppercase; letter-spacing: 0.8px;">What We Do & What We Serve:</strong><br/>
+                      We specialize in high-impact Advertisement Design, Social Media Content, full-scale Website Development, Video & Photo Production, Growth Marketing Strategy, and robust n8n Workflow Automation. Built for peak performance.
+                    </div>
+                    <p style="margin: 0; font-size: 11px; color: #6B7280; font-weight: 500;">Canvas Cartel • Gurugram • hello@canvascartel.in</p>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #9CA3AF; font-style: italic;">This is a computer-generated invoice.</p>
+                  </div>
                 </div>
               </div>
             </div>
