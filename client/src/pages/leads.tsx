@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, MoreVertical, Pencil, Trash2, Phone, ChevronDown, X, Send } from "lucide-react";
+import { Plus, Search, MoreVertical, Pencil, Trash2, Phone, ChevronDown, X, Send, Upload } from "lucide-react";
 import type { Lead } from "@shared/schema";
 
 const statusOptions = ["new", "contacted", "qualified", "proposal", "negotiation", "won", "lost"];
@@ -519,11 +519,93 @@ export default function Leads() {
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
   const [webhookLeadId, setWebhookLeadId] = useState<string>("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  
+  // CSV Import States
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [previewLeads, setPreviewLeads] = useState<any[]>([]);
+  
   const { toast } = useToast();
 
   const { data: leads, isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
   });
+
+  const importMutation = useMutation({
+    mutationFn: async (rows: any[]) => {
+      for (const row of rows) {
+        await apiRequest("POST", "/api/leads", row);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({ title: "Import Successful", description: `Successfully imported ${previewLeads.length} leads from CSV!` });
+      setCsvOpen(false);
+      setPreviewLeads([]);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const parsed = parseCSV(text);
+      if (parsed.length === 0) {
+        toast({ title: "Parse failed", description: "No valid lead rows with names were found in the CSV file.", variant: "destructive" });
+        return;
+      }
+      setPreviewLeads(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImport = () => {
+    if (previewLeads.length === 0) return;
+    importMutation.mutate(previewLeads);
+  };
+
+  function parseCSV(text: string) {
+    const lines = text.split(/\r?\n/);
+    if (lines.length <= 1) return [];
+
+    const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, "").toLowerCase());
+    const results: any[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const values = line.split(",").map(v => v.trim().replace(/^["']|["']$/g, ""));
+      const row: any = {};
+      headers.forEach((header, idx) => {
+        if (values[idx] !== undefined) {
+          row[header] = values[idx];
+        }
+      });
+
+      if (row.name) {
+        results.push({
+          name: row.name,
+          email: row.email || null,
+          phone: row.phone || null,
+          company: row.company || null,
+          value: parseInt(row.value) || 0,
+          status: row.status || "new",
+          category: row.category || null,
+          source: row.source || "csv_import",
+          notes: row.notes || null,
+          tags: row.tags ? row.tags.split(";").map((t: string) => t.trim()) : [],
+        });
+      }
+    }
+    return results;
+  }
 
   const sendToN8nMutation = useMutation({
     mutationFn: async ({ leadId, url }: { leadId: string; url: string }) => {
@@ -613,23 +695,110 @@ export default function Leads() {
           <h1 className="text-2xl font-bold" data-testid="text-leads-title">Leads</h1>
           <p className="text-muted-foreground">Manage your sales leads</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) handleClose(); else setDialogOpen(true); }}>
-          <DialogTrigger asChild>
+        
+        <div className="flex items-center gap-2">
+          {/* CSV Import Button & Dialog */}
+          <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
             <Button
-              onClick={() => { setEditingLead(undefined); setDialogOpen(true); }}
-              data-testid="button-add-lead"
+              variant="outline"
+              onClick={() => {
+                setPreviewLeads([]);
+                setCsvOpen(true);
+              }}
+              data-testid="button-import-csv"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Lead
+              <Upload className="w-4 h-4 mr-2" />
+              Import CSV
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingLead ? "Edit Lead" : "Add New Lead"}</DialogTitle>
-            </DialogHeader>
-            <LeadForm lead={editingLead} onClose={handleClose} />
-          </DialogContent>
-        </Dialog>
+            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Import Leads via CSV</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="p-3 border rounded-lg bg-muted/20 text-xs space-y-1.5">
+                  <p className="font-bold text-foreground">CSV File Formatting Guide:</p>
+                  <p>Prepare your file with a header row matching the following column names exactly:</p>
+                  <code className="block bg-background p-2 rounded font-mono text-[10px] overflow-x-auto border border-border/50">
+                    Name, Email, Phone, Company, Value, Status, Category, Source, Notes, Tags
+                  </code>
+                  <p className="text-muted-foreground mt-1">
+                    * Values should be integers. Multiple tags can be separated by a semicolon (e.g. <code>hot;digital</code>). Only rows containing a valid <strong>Name</strong> are processed.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="csv-file-input" className="text-xs font-semibold">Select CSV File</Label>
+                  <Input
+                    id="csv-file-input"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvUpload}
+                    className="cursor-pointer"
+                  />
+                </div>
+
+                {previewLeads.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground">Import Preview ({previewLeads.length} leads detected):</p>
+                    <div className="border rounded-lg overflow-hidden max-h-40 overflow-y-auto text-xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-muted border-b text-[10px] font-bold">
+                            <th className="p-2">Name</th>
+                            <th className="p-2">Email</th>
+                            <th className="p-2">Company</th>
+                            <th className="p-2">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewLeads.slice(0, 5).map((row, idx) => (
+                            <tr key={idx} className="border-b bg-background hover:bg-muted/10">
+                              <td className="p-2 font-medium">{row.name}</td>
+                              <td className="p-2 truncate">{row.email || "-"}</td>
+                              <td className="p-2 truncate">{row.company || "-"}</td>
+                              <td className="p-2">₹{row.value.toLocaleString("en-IN")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {previewLeads.length > 5 && (
+                        <p className="p-2 text-center text-[10px] text-muted-foreground bg-muted/20 border-t">
+                          And {previewLeads.length - 5} more rows...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleConfirmImport}
+                  className="w-full h-10 bg-[#EE2B2B] hover:bg-[#c92222] text-white"
+                  disabled={importMutation.isPending || previewLeads.length === 0}
+                >
+                  {importMutation.isPending ? "Importing Leads..." : `Confirm & Import ${previewLeads.length} Leads`}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) handleClose(); else setDialogOpen(true); }}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => { setEditingLead(undefined); setDialogOpen(true); }}
+                data-testid="button-add-lead"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Lead
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingLead ? "Edit Lead" : "Add New Lead"}</DialogTitle>
+              </DialogHeader>
+              <LeadForm lead={editingLead} onClose={handleClose} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
