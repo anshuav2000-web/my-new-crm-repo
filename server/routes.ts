@@ -590,6 +590,10 @@ export async function registerRoutes(
       const statusBg = isPaid ? "#2F9E44" : "#E53E3E";
       const statusLabel = isPaid ? "PAID" : "UNPAID";
 
+      const monthlyPlanBadgeHtml = invoice.isMonthlyPlan
+        ? `<div style="display:inline-block;background:#1E5EFF;color:#ffffff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;letter-spacing:0.5px;margin-top:4px;text-transform:uppercase">MONTHLY PLAN</div>`
+        : "";
+
       const emailHtml = `
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:680px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;box-shadow:0 10px 25px rgba(10,22,40,0.05)">
           <!-- 1. Header Band -->
@@ -604,6 +608,7 @@ export async function registerRoutes(
                   <td style="vertical-align:middle;text-align:right">
                     <h1 style="margin:0;font-size:30px;font-weight:800;color:#ffffff;letter-spacing:-1px">INVOICE</h1>
                     <p style="margin:4px 0 0;font-size:13px;color:#B3B9C6;font-weight:600">NO: ${invoice.invoiceNumber}</p>
+                    ${monthlyPlanBadgeHtml}
                   </td>
                 </tr>
               </table>

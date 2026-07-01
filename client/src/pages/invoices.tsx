@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Search,
@@ -85,6 +86,7 @@ function InvoiceForm({
     taxPercentage: invoice?.taxPercentage ?? 18,
     notes: invoice?.notes || "",
     dueDate: invoice?.dueDate || "",
+    isMonthlyPlan: invoice?.isMonthlyPlan || false,
   });
 
   const [selectedServiceId, setSelectedServiceId] = useState("");
@@ -272,6 +274,49 @@ function InvoiceForm({
           onChange={(e) => setFormData({ ...formData, clientAddress: e.target.value })}
           rows={2}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Styled Status Pill Tags Selector */}
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Invoice Status</Label>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {Object.keys(statusColors).map((status) => {
+              const isActive = formData.status === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status })}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide transition-all border ${
+                    isActive
+                      ? `${statusColors[status]} ring-2 ring-primary/30 border-transparent scale-105 shadow-sm`
+                      : "bg-background border-border text-muted-foreground hover:bg-muted/30"
+                  }`}
+                >
+                  {status.replace("_", " ")}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Monthly Base Plan Switch */}
+        <div className="flex items-center space-x-3 border rounded-lg p-3 bg-muted/10">
+          <Switch
+            id="is-monthly-plan"
+            checked={formData.isMonthlyPlan}
+            onCheckedChange={(checked: boolean) => setFormData({ ...formData, isMonthlyPlan: checked })}
+          />
+          <div className="grid gap-1 leading-none">
+            <Label htmlFor="is-monthly-plan" className="text-sm font-semibold cursor-pointer">
+              Monthly Base Plan
+            </Label>
+            <p className="text-[10px] text-muted-foreground">
+              Enable if this is a recurring monthly subscription invoice.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -519,6 +564,10 @@ export default function Invoices() {
       const statusBg = isPaid ? "#2F9E44" : "#E53E3E";
       const statusLabel = isPaid ? "PAID" : "UNPAID";
 
+      const monthlyPlanBadgeHtml = inv.isMonthlyPlan
+        ? `<div style="display:inline-block;background:#1E5EFF;color:#ffffff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:12px;letter-spacing:1px;margin-top:6px;text-transform:uppercase">MONTHLY PLAN</div>`
+        : "";
+
       // Helper variables to prevent nested template string escaping issues
       const dueDateHtml = dueDate ? `<p style="margin:2px 0 0;font-size:13px;color:#999">Due: ${dueDate}</p>` : "";
       const clientEmailHtml = inv.clientEmail ? `<p style="margin:4px 0 0;font-size:13px;color:#666">${inv.clientEmail}</p>` : "";
@@ -627,6 +676,7 @@ export default function Invoices() {
                     <td style="vertical-align: middle; text-align: right;">
                       <h1 style="margin: 0; font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -1.5px; text-transform: uppercase;">INVOICE</h1>
                       <p style="margin: 6px 0 0 0; font-size: 14px; color: #B3B9C6; font-weight: 600; letter-spacing: 1px;">NO: ${inv.invoiceNumber}</p>
+                      ${monthlyPlanBadgeHtml}
                     </td>
                   </tr>
                 </table>

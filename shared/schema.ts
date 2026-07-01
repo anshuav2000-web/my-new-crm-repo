@@ -140,6 +140,7 @@ export const invoices = pgTable("invoices", {
   notes: text("notes"),
   dueDate: text("due_date"),
   sentAt: text("sent_at"),
+  isMonthlyPlan: boolean("is_monthly_plan").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
