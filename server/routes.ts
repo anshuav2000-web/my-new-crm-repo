@@ -921,8 +921,26 @@ export async function registerRoutes(
 
   // ========== SERVICES ==========
   app.get("/api/services", async (_req, res) => {
-    const all = await storage.getServices();
-    res.json(all);
+    try {
+      let all = await storage.getServices();
+      if (all.length === 0) {
+        log("[Self-Healing] Seeding default agency services on-the-fly...", "services");
+        const serviceData = [
+          { name: "Website Development", description: "Full-stack high-converting web application with React & Node", rate: 50000 },
+          { name: "Google Gemini AI Integration", description: "Custom AI automation workflows and assistant chatbot integration", rate: 75000 },
+          { name: "Full Brand Identity", description: "Logo, guidelines, custom typography, and corporate asset kits", rate: 45000 },
+          { name: "SEO & Content Marketing", description: "Comprehensive search engine optimization campaign and content scheduling", rate: 35000 },
+          { name: "Social Media Strategy", description: "Monthly management, advertisement design, and engagement tracking", rate: 40000 },
+        ];
+        for (const s of serviceData) {
+          await storage.createService(s);
+        }
+        all = await storage.getServices();
+      }
+      res.json(all);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   app.post("/api/services", async (req, res) => {

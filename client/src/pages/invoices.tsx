@@ -323,9 +323,11 @@ function InvoiceForm({
         <div className="flex items-center justify-between mb-2">
           <Label className="text-base font-semibold">Services / Line Items</Label>
           <div className="flex gap-2 items-center">
-            <Select
+            {/* High-legibility custom native select completely immune to Radix focus-traps and event bubbles */}
+            <select
               value={selectedServiceId}
-              onValueChange={(val) => {
+              onChange={(e) => {
+                const val = e.target.value;
                 if (!val) return;
                 const selected = servicesList.find((s) => s.id === val);
                 if (selected) {
@@ -333,20 +335,18 @@ function InvoiceForm({
                 }
                 setSelectedServiceId(""); // Reset selector immediately
               }}
+              className="h-9 w-48 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+              data-testid="select-add-service"
             >
-              <SelectTrigger className="w-48 h-9 text-xs border border-input bg-background" data-testid="button-add-service">
-                <SelectValue placeholder="Add Service" />
-              </SelectTrigger>
-              <SelectContent className="z-[99999]">
-                {servicesList
-                  .filter((s) => s.isActive !== false)
-                  .map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} (₹{s.rate.toLocaleString("en-IN")})
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+              <option value="">+ Add Service</option>
+              {servicesList
+                .filter((s) => s.isActive !== false)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} (₹{s.rate.toLocaleString("en-IN")})
+                  </option>
+                ))}
+            </select>
             <Button variant="outline" size="sm" onClick={addItem} data-testid="button-add-item" className="h-9">
               <Plus className="w-3 h-3 mr-1" /> Custom Item
             </Button>
