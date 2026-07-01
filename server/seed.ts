@@ -89,11 +89,13 @@ export async function seedDatabase() {
     // Seed Premium Agency Services
     log("Seeding premium agency services...", "seed");
     const serviceData = [
-      { name: "Website Development", description: "Full-stack high-converting web application with React & Node", rate: 50000 },
-      { name: "Google Gemini AI Integration", description: "Custom AI automation workflows and assistant chatbot integration", rate: 75000 },
-      { name: "Full Brand Identity", description: "Logo, guidelines, custom typography, and corporate asset kits", rate: 45000 },
-      { name: "SEO & Content Marketing", description: "Comprehensive search engine optimization campaign and content scheduling", rate: 35000 },
-      { name: "Social Media Strategy", description: "Monthly management, advertisement design, and engagement tracking", rate: 40000 },
+      { name: "Advertisement Design", description: "Eye-catching advertisements that communicate clearly and convert. We create visuals that stop the scroll and drive action.", rate: 15000 },
+      { name: "Social Media Content", description: "Content that connects, not just posts. Strategic social media presence that builds community and engagement.", rate: 25000 },
+      { name: "Website Development", description: "Websites that blend stunning design with peak performance. Fast, responsive, and built for results.", rate: 50000 },
+      { name: "Video Production", description: "Compelling video content that tells your brand story. From concept to final cut, we bring visions to life.", rate: 45000 },
+      { name: "Photo Production", description: "Professional photography that captures your brand essence. High-quality visuals that make an impact.", rate: 20000 },
+      { name: "Marketing Strategy", description: "Complete marketing plans built around insight, creativity, and execution. Strategic roadmaps for growth.", rate: 35000 },
+      { name: "n8n Automation", description: "Streamline your business with powerful workflow automation. Connect apps, automate tasks, and boost productivity.", rate: 30000 },
     ];
     for (const s of serviceData) {
       await storage.createService(s);
