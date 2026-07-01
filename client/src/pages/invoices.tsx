@@ -481,16 +481,21 @@ export default function Invoices() {
         : 0;
 
       const invoiceDate = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-      const dueDate = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
+      const dueDate = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Immediate";
 
       const itemsHtml = items.map((item: any, idx: number) =>
-        `<tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fafafa'}">
-          <td style="padding:12px 16px;border-bottom:1px solid #eee;color:#333;font-size:14px">${item.description}</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:center;color:#555;font-size:14px">${item.quantity}</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:right;color:#555;font-size:14px">₹${item.rate.toLocaleString("en-IN")}</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #eee;text-align:right;color:#333;font-weight:600;font-size:14px">₹${item.amount.toLocaleString("en-IN")}</td>
+        `<tr style="background:${idx % 2 === 0 ? '#FFFFFF' : '#F4F6FB'}; height: 52px; font-size: 14px; border-bottom: 1px solid #E5E7EB;">
+          <td style="padding:12px 16px; color:#4A4F5C;">${item.description}</td>
+          <td style="padding:12px 16px; text-align:center; color:#4A4F5C;">${item.quantity}</td>
+          <td style="padding:12px 16px; text-align:right; color:#4A4F5C;">Rs. ${item.rate.toLocaleString("en-IN")}</td>
+          <td style="padding:12px 16px; text-align:right; color:#0A1628; font-weight:600;">Rs. ${item.amount.toLocaleString("en-IN")}</td>
         </tr>`
       ).join("");
+
+      // Status pill configuration
+      const isPaid = inv.status === "paid";
+      const statusBg = isPaid ? "#2F9E44" : "#E53E3E";
+      const statusLabel = isPaid ? "PAID" : "UNPAID";
 
       // Helper variables to prevent nested template string escaping issues
       const dueDateHtml = dueDate ? `<p style="margin:2px 0 0;font-size:13px;color:#999">Due: ${dueDate}</p>` : "";
@@ -501,20 +506,20 @@ export default function Invoices() {
       const discountLabel = inv.discountType === "percentage" ? `${inv.discountValue}%` : "Fixed";
       const discountHtml = discountAmount > 0 ? `
         <tr>
-          <td style="padding:6px 0;font-size:14px;color:#22c55e">Discount (${discountLabel})</td>
-          <td style="padding:6px 0;font-size:14px;color:#22c55e;text-align:right;font-weight:500">-₹${discountAmount.toLocaleString("en-IN")}</td>
+          <td style="padding:6px 0;color:#2F9E44">Discount (${discountLabel})</td>
+          <td style="padding:6px 0;text-align:right;color:#2F9E44;font-weight:700;">-Rs. ${discountAmount.toLocaleString("en-IN")}</td>
         </tr>` : "";
       
       const taxHtml = taxAmount > 0 ? `
         <tr>
-          <td style="padding:6px 0;font-size:14px;color:#666">Tax (${inv.taxPercentage}%)</td>
-          <td style="padding:6px 0;font-size:14px;color:#333;text-align:right;font-weight:500">₹${taxAmount.toLocaleString("en-IN")}</td>
+          <td style="padding:6px 0;color:#8A8F9C">Tax / GST (${inv.taxPercentage}%)</td>
+          <td style="padding:6px 0;text-align:right;color:#0A1628;font-weight:700;">Rs. ${taxAmount.toLocaleString("en-IN")}</td>
         </tr>` : "";
 
       const notesHtml = inv.notes ? `
         <div style="margin-top:30px;">
           <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:600">Notes</p>
-          <p style="margin:8px 0 0;font-size:13px;color:#666;line-height:1.6">${inv.notes}</p>
+          <p style="margin:8px 0 0;font-size:13px;color:#6B7280;font-style:italic;line-height:1.5">${inv.notes}</p>
         </div>` : "";
 
       printWindow.document.write(`
@@ -522,85 +527,236 @@ export default function Invoices() {
           <head>
             <title>Invoice ${inv.invoiceNumber}</title>
             <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
               @media print {
-                body { margin: 0; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; background: #fff; }
+                body { margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; }
+                .invoice-container { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
                 .no-print { display: none; }
               }
-              body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.5; padding: 40px; background: #fafafa; }
-              .invoice-card { max-width: 800px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 40px; }
+              body { 
+                font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; 
+                color: #4A4F5C; 
+                line-height: 1.5; 
+                padding: 40px 0; 
+                background: #F4F6FB; 
+                margin: 0;
+              }
+              .invoice-container { 
+                max-width: 840px; 
+                margin: 0 auto; 
+                background: #ffffff; 
+                box-shadow: 0 10px 25px rgba(10, 22, 40, 0.05); 
+                border-radius: 12px; 
+                overflow: hidden; 
+                box-sizing: border-box;
+              }
+              .header-band {
+                background: #0A1628;
+                padding: 50px 60px;
+                color: #ffffff;
+                box-sizing: border-box;
+              }
+              .content-area {
+                padding: 0 60px 50px 60px;
+                box-sizing: border-box;
+              }
+              .info-bar {
+                background: #F4F6FB;
+                margin: 30px 0;
+                border-radius: 8px;
+                padding: 20px 30px;
+              }
+              .section-label {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                color: #8A8F9C;
+                font-weight: 700;
+                margin-bottom: 6px;
+              }
+              .section-value {
+                font-size: 15px;
+                color: #0A1628;
+                font-weight: 700;
+              }
+              .pill-badge {
+                display: inline-block;
+                background: ${statusBg};
+                color: #ffffff;
+                font-size: 12px;
+                font-weight: 800;
+                padding: 6px 16px;
+                border-radius: 14px;
+                letter-spacing: 1px;
+                text-align: center;
+              }
             </style>
           </head>
           <body>
-            <div class="invoice-card">
-              <!-- Top Red bar -->
-              <div style="height: 6px; background: #EE2B2B; margin: -40px -40px 30px -40px; border-top-left-radius: 8px; border-top-right-radius: 8px;"></div>
-              
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="vertical-align: top;">
-                    <h1 style="margin:0;font-size:36px;font-weight:800;color:#222;letter-spacing:-1px">Invoice</h1>
-                    <p style="margin:12px 0 0;font-size:16px;font-weight:700;color:#333">Canvas Cartel</p>
-                    <p style="margin:4px 0 0;font-size:13px;color:#777">Creative Agency Network</p>
-                    <p style="margin:2px 0 0;font-size:13px;color:#777">hello@canvascartel.in</p>
-                  </td>
-                  <td style="vertical-align: top; text-align: right;">
-                    <p style="margin:0;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Invoice No.</p>
-                    <p style="margin:4px 0 0;font-size:24px;font-weight:700;color:#EE2B2B">${inv.invoiceNumber}</p>
-                    <p style="margin:12px 0 0;font-size:13px;color:#999">Date: ${invoiceDate}</p>
-                    ${dueDateHtml}
-                  </td>
-                </tr>
-              </table>
-
-              <div style="border-top:2px solid #EE2B2B; margin: 25px 0;"></div>
-
-              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f9f9f9;border-radius:8px;margin-bottom:30px;">
-                <tr>
-                  <td style="padding:20px">
-                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:600">Bill To</p>
-                    <p style="margin:8px 0 0;font-size:16px;font-weight:700;color:#333">${inv.clientName}</p>
-                    ${clientEmailHtml}
-                    ${clientPhoneHtml}
-                    ${clientAddressHtml}
-                  </td>
-                </tr>
-              </table>
-
-              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-bottom:20px;">
-                <thead>
+            <div class="invoice-container">
+              <!-- 1. Header Band -->
+              <div class="header-band">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
-                    <th style="padding:12px 16px;text-align:left;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Description</th>
-                    <th style="padding:12px 16px;text-align:center;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Qty</th>
-                    <th style="padding:12px 16px;text-align:right;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Rate</th>
-                    <th style="padding:12px 16px;text-align:right;background:#EE2B2B;color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">Amount</th>
+                    <td style="vertical-align: middle;">
+                      <img src="https://canvascartel.in/wp-content/uploads/2023/10/canvas-cartel-logo.png" alt="Canvas Cartel" style="height: 38px; width: auto; display: block;" onerror="this.src='https://placehold.co/180x40/0a1628/ffffff?text=Canvas+Cartel'"/>
+                      <p style="margin: 8px 0 0 0; font-size: 13px; color: #B3B9C6; font-weight: 500; letter-spacing: 0.5px;">AI Automation & Digital Solutions</p>
+                    </td>
+                    <td style="vertical-align: middle; text-align: right;">
+                      <h1 style="margin: 0; font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -1.5px; text-transform: uppercase;">INVOICE</h1>
+                      <p style="margin: 6px 0 0 0; font-size: 14px; color: #B3B9C6; font-weight: 600; letter-spacing: 1px;">NO: ${inv.invoiceNumber}</p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${itemsHtml}
-                </tbody>
-              </table>
+                </table>
+              </div>
 
-              <table cellpadding="0" cellspacing="0" border="0" width="280" align="right" style="border-collapse:collapse;margin-top:20px;margin-bottom:30px;">
-                <tr>
-                  <td style="padding:6px 0;font-size:14px;color:#666">Subtotal</td>
-                  <td style="padding:6px 0;font-size:14px;color:#333;text-align:right;font-weight:500">₹${(inv.subtotal || 0).toLocaleString("en-IN")}</td>
-                </tr>
-                ${discountHtml}
-                ${taxHtml}
-                <tr><td colspan="2" style="padding:0"><div style="border-top:2px solid #EE2B2B;margin:8px 0"></div></td></tr>
-                <tr>
-                  <td style="padding:8px 0;font-size:18px;font-weight:800;color:#222">Total</td>
-                  <td style="padding:8px 0;font-size:18px;font-weight:800;color:#222;text-align:right">₹${(inv.total || 0).toLocaleString("en-IN")}</td>
-                </tr>
-              </table>
+              <div class="content-area">
+                <!-- 2. Info Bar -->
+                <div class="info-bar">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td width="33.33%">
+                        <div class="section-label">Issue Date</div>
+                        <div class="section-value">${invoiceDate}</div>
+                      </td>
+                      <td width="33.33%" style="text-align: center; border-left: 1px solid #E5E7EB; border-right: 1px solid #E5E7EB;">
+                        <div class="section-label">Due Date</div>
+                        <div class="section-value">${dueDate}</div>
+                      </td>
+                      <td width="33.33%" style="text-align: right; padding-right: 10px;">
+                        <div class="section-label">Status</div>
+                        <div class="pill-badge">${statusLabel}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
 
-              <div style="clear: both;"></div>
+                <!-- 3. Bill To / From -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 40px;">
+                  <tr>
+                    <td width="50%" style="vertical-align: top; padding-right: 30px;">
+                      <div class="section-label" style="margin-bottom: 10px;">Bill To</div>
+                      <div style="font-size: 16px; font-weight: 700; color: #0A1628; margin-bottom: 6px;">${inv.clientName}</div>
+                      ${inv.clientEmail ? `<div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">${inv.clientEmail}</div>` : ""}
+                      ${inv.clientPhone ? `<div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">${inv.clientPhone}</div>` : ""}
+                      ${inv.clientAddress ? `<div style="font-size: 13px; color: #4A4F5C; line-height: 1.4;">${inv.clientAddress}</div>` : ""}
+                    </td>
+                    <td width="50%" style="vertical-align: top; padding-left: 30px; border-left: 1px solid #E5E7EB;">
+                      <div class="section-label" style="margin-bottom: 10px;">From</div>
+                      <div style="font-size: 16px; font-weight: 700; color: #0A1628; margin-bottom: 6px;">Canvas Cartel</div>
+                      <div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">hello@canvascartel.in</div>
+                      <div style="font-size: 13px; color: #4A4F5C; margin-bottom: 4px;">+91 9876543210</div>
+                      <div style="font-size: 13px; color: #4A4F5C; line-height: 1.4;">DLF Cyber City, Phase 3, Gurugram, HR, India</div>
+                    </td>
+                  </tr>
+                </table>
 
-              ${notesHtml}
+                <!-- 4. Line Items Table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse; margin-bottom: 40px;">
+                  <thead>
+                    <tr style="background: #F4F6FB; border-bottom: 2px solid #0A1628; height: 42px;">
+                      <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px;">Description</th>
+                      <th style="padding: 12px 16px; text-align: center; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 80px;">Qty</th>
+                      <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 140px;">Rate</th>
+                      <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 700; color: #0A1628; text-transform: uppercase; letter-spacing: 1px; width: 140px;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                  </tbody>
+                </table>
 
-              <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;">
-                <p style="margin:0;font-size:14px;font-weight:700;color:#333">Canvas Cartel</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#999">Thank you for your business!</p>
+                <!-- 5. Totals -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 45px;">
+                  <tr>
+                    <td style="vertical-align: top;">
+                      <!-- Subtotal & GST Details -->
+                      <table cellpadding="0" cellspacing="0" border="0" width="260" style="font-size: 14px;">
+                        <tr>
+                          <td style="padding: 6px 0; color: #8A8F9C;">Subtotal</td>
+                          <td style="padding: 6px 0; text-align: right; color: #0A1628; font-weight: 700;">Rs. ${(inv.subtotal || 0).toLocaleString("en-IN")}</td>
+                        </tr>
+                        ${discountHtml}
+                        ${taxHtml}
+                      </table>
+                    </td>
+                    <td style="vertical-align: top; text-align: right;">
+                      <!-- Total Box -->
+                      <div style="display: inline-block; background: #1E5EFF; color: #ffffff; padding: 20px 30px; border-radius: 8px; text-align: right; width: 320px; box-sizing: border-box; box-shadow: 0 4px 12px rgba(30, 94, 255, 0.15);">
+                        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; opacity: 0.85; margin-bottom: 4px;">Total Amount Due</div>
+                        <div style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">Rs. ${(inv.total || 0).toLocaleString("en-IN")}</div>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- 6. Payment Terms -->
+                <div style="margin-bottom: 35px;">
+                  <h3 style="font-size: 15px; font-weight: 700; color: #0A1628; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid #E5E7EB; text-transform: uppercase; letter-spacing: 0.5px;">Payment Terms</h3>
+                  <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #4A4F5C; line-height: 1.6;">
+                    <li>Payments are due within 15 days of the invoice date unless explicitly specified.</li>
+                    <li>Please quote the Invoice Number as a reference with all transfers.</li>
+                    <li>Payment via UPI / NetBanking / Bank Transfer is accepted.</li>
+                    <li>Overdue accounts will be subject to a service charge of 1.5% per month.</li>
+                    <li>Digital products or automated systems will only be fully released post final settlement.</li>
+                    <li>GST invoices will be generated and issued upon request.</li>
+                  </ol>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6" style="display: flex; gap: 30px; margin-bottom: 45px;">
+                  <!-- 7. Notes -->
+                  <div style="flex: 1;">
+                    <h3 style="font-size: 15px; font-weight: 700; color: #0A1628; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Notes</h3>
+                    <p style="margin: 0; font-size: 13px; color: #6B7280; font-style: italic; line-height: 1.5;">
+                      ${inv.notes || "Thank you for choosing Canvas Cartel. We appreciate your business and look forward to supporting your AI automation requirements."}
+                    </p>
+                  </div>
+
+                  <!-- 8. Payment Details Box -->
+                  <div style="flex: 1; background: #F4F6FB; border-radius: 8px; padding: 20px; box-sizing: border-box;">
+                    <h3 style="font-size: 13px; font-weight: 700; color: #0A1628; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Payment Details</h3>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size: 12px; line-height: 1.8;">
+                      <tr>
+                        <td style="color: #8A8F9C;">UPI ID:</td>
+                        <td style="text-align: right; color: #0A1628; font-weight: 700;">9971193032@ptsbi</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8A8F9C;">Account No:</td>
+                        <td style="text-align: right; color: #0A1628; font-weight: 700;">5445178208</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8A8F9C;">IFSC Code:</td>
+                        <td style="text-align: right; color: #0A1628; font-weight: 700;">KKBK0004627</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8A8F9C;">Bank Branch:</td>
+                        <td style="text-align: right; color: #0A1628; font-weight: 700;">Kotak Bank, Delhi - Saket</td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- 9. Footer Signatures -->
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 40px;">
+                  <tr>
+                    <td width="45%" style="text-align: center;">
+                      <div style="border: 1px dashed #D1D5DB; padding: 25px; border-radius: 4px; height: 110px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div style="font-size: 12px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Authorised Signature</div>
+                      </div>
+                    </td>
+                    <td width="10%"></td>
+                    <td width="45%" style="text-align: center;">
+                      <div style="border: 1px dashed #D1D5DB; padding: 25px; border-radius: 4px; height: 110px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div style="font-size: 12px; color: #9CA3AF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">Company Seal / Stamp</div>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+
+                <div style="border-top: 1px solid #E5E7EB; padding-top: 15px; text-align: center;">
+                  <p style="margin: 0; font-size: 12px; color: #6B7280; font-weight: 500;">Canvas Cartel • DLF Cyber City, Gurugram • hello@canvascartel.in</p>
+                  <p style="margin: 4px 0 0 0; font-size: 11px; color: #9CA3AF; font-style: italic;">This is a computer-generated invoice.</p>
+                </div>
               </div>
             </div>
             <script>
